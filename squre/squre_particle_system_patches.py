@@ -29,8 +29,6 @@ def update(frame):
     position[0] += velocity[0]
     position[1] += velocity[1]
 
-    print(np.abs(round(position[0],5)))
-
     if np.abs(round(position[0],5)) == wall_width  / 2 - ball_radius:
         velocity[0] *= -1
     if np.abs(round(position[1],5)) == wall_heigth / 2 - ball_radius :
@@ -40,6 +38,6 @@ def update(frame):
 
 ax.set_aspect('equal')
 
-ani = FuncAnimation(fig, update, frames=2000, interval=0.1 ,repeat=False)
+ani = FuncAnimation(fig, update, frames=100, interval=0.1 ,repeat=False)
 
 plt.show()

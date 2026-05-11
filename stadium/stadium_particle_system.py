@@ -10,8 +10,8 @@ wall_width =40.0
 wall_half_dismeter =20.0
 
 ax.plot(0, 0)
-position = np.array([29.0, 0.0])
-velocity = np.array([0.00015, 0.0005])
+position = np.array([9.0, 0.0])
+velocity = np.array([0.015, 0.05])
 
 ax.set_xlim(-wall_width /2 -wall_half_dismeter, wall_width /2 +wall_half_dismeter)
 ax.set_ylim(-wall_half_dismeter /2 -5.0, wall_half_dismeter /2 +5.0)
