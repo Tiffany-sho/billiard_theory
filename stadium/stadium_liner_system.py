@@ -41,15 +41,11 @@ def update(frame):
 
     plt.plot(ordit_x,ordit_y,color = "black" ,linewidth = 1 ,alpha=0.1)
 
-    position[0] = intersection[0]
-    position[1] = intersection[1]
+    position[:2] = intersection[:2]
+    reflected_velocity = find_reflect_direction(position,velocity,wall_width)
+    velocity[:2] = reflected_velocity[:2]
 
-    reflected_velocity = find_reflect_direction(intersection,velocity,wall_width)
-
-    velocity[0] = reflected_velocity[0]
-    velocity[1] = reflected_velocity[1]
-
-ani = FuncAnimation(fig, update, frames=10, interval=1 ,repeat=False)
+ani = FuncAnimation(fig, update, frames=10, interval=1000 ,repeat=False)
 
 ax.set_aspect('equal')
 plt.show()
