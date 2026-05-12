@@ -8,8 +8,8 @@ def find_intersection_reversion(point,velocity,W, D) :
         return point.copy()
 
     if velocity[1] == 0 :
-        x = point[1]
-        y = velocity[0] /np.abs(velocity[0]) * np.sqrt((D /2) ** 2 - x ** 2) + velocity[0] /np.abs(velocity[0]) * W / 2
+        y = point[1]
+        x = velocity[0] /np.abs(velocity[0]) * np.sqrt((D /2) ** 2 - y ** 2) + velocity[0] /np.abs(velocity[0]) * W / 2
         return np.array([x,y])
 
     temp_intersection_y = D /2 if velocity[1] > 0 else -D /2
