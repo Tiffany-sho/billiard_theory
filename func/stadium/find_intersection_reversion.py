@@ -6,6 +6,11 @@ def find_intersection_reversion(point,velocity,W, D) :
 
     if velocity[0] == 0 and velocity[1] == 0 :
         return point.copy()
+    
+    if velocity[0] == 0 :
+        x = point[0]
+        y = velocity[1] /np.abs(velocity[1]) * D / 2
+        return np.array([x,y])
 
     if velocity[1] == 0 :
         y = point[1]
