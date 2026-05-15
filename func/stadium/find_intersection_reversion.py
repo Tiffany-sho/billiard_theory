@@ -34,7 +34,6 @@ def find_intersection_reversion(point,velocity,W, D) :
             x = np.sign(y) * np.sqrt((D /2) ** 2 - y ** 2) + W / 2
         else :
             x = np.sign(y) * np.sqrt((D /2) ** 2 - y ** 2) - W / 2
-        print(f"交点x{np.array([x,y])}")
         return np.array([x,y])
     
 
