@@ -15,12 +15,12 @@ from find_reflect_direction import find_reflect_direction
 fig ,ax = plt.subplots()
 stadium_set(ax)
 
-position = np.array([0.0,0.0])
-velocity = np.array([9.0 ,0.0001])
+position = np.array([0.0,1 /np.sqrt(2)])
+velocity = np.array([-1.0, 0.0])
 
 dot, = plt.plot([] ,[] , "o" , color = "black" ,ms = 3)
 
-positions = [position.copy()]
+positions = [[0.0,1 /np.sqrt(2)]]
 velocities = [velocity.copy()]
 intersections = []
 
@@ -40,8 +40,8 @@ ordit_x = []
 ordit_y = []
 for i in range(len(intersections)):
 
-    divide_x = int(abs((positions[i][0] - intersections[i][0]) / velocities[i][0]) *100) if velocities[i][0] != 0.0 else None
-    divide_y = int(abs((positions[i][1] - intersections[i][1]) / velocities[i][1]) *100) if velocities[i][1] != 0.0 else None
+    divide_x = int(abs((positions[i][0] - intersections[i][0]) / velocities[i][0]) *10) if velocities[i][0] != 0.0 else None
+    divide_y = int(abs((positions[i][1] - intersections[i][1]) / velocities[i][1]) *10) if velocities[i][1] != 0.0 else None
 
     if divide_x and divide_y :
     

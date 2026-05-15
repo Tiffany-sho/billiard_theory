@@ -6,17 +6,14 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/stadium'))
 
-from setting import wall_width, half_circle_diameter,stadium_set
-from find_intersection_reversion import find_intersection_reversion
+from setting import wall_width, half_circle_diameter ,initial_position ,initial_velocity,stadium_set
 from find_intersection_func import find_intersection
+from find_intersection_reversion import find_intersection_reversion
 
 basic_colors = ['red', 'blue', 'green', 'orange', 'purple', 'black', 'cyan', 'magenta']
 
 fig ,ax = plt.subplots()
 stadium_set(ax)
-
-initial_position = np.array([-10.0 ,0.0],dtype=np.float64)
-initial_velocity = np.array([-0.4 , 0.3] ,dtype=np.float64)
 
 print("-------------------------------------")
 print(f"初期値:{initial_position}")
@@ -25,7 +22,7 @@ print(f"初速度:{initial_velocity}")
 
 for i in range(20) :
 
-    position = np.array([np.random.rand() *40 - 20,np.random.rand() * 20 - 10])
+    position = np.array([np.random.rand() *wall_width - wall_width /2,np.random.rand() * half_circle_diameter - half_circle_diameter/2])
     velocity = np.array([np.random.rand() * 2 - 1, np.random.rand() * 2 - 1])
     intersection = find_intersection(position,velocity,wall_width, half_circle_diameter)
     intersection_reversion = find_intersection_reversion(position,velocity,wall_width, half_circle_diameter)
@@ -56,7 +53,7 @@ for i in range(20) :
 # ordit_x = np.linspace(-(wall_width + half_circle_diameter)/2 ,(wall_width + half_circle_diameter)/2 ,100)
 # ordit_y = initial_velocity[1] /initial_velocity[0] * (ordit_x - initial_position[0]) + initial_position[1]
 
-plt.plot(ordit_x,ordit_y)
+# plt.plot(ordit_x,ordit_y)
 
 ax.set_aspect('equal')
 plt.show()

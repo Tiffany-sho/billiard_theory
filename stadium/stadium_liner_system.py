@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/stadium'))
 
-from setting import wall_width, half_circle_diameter ,stadium_set
+from setting import wall_width, half_circle_diameter ,initial_position ,initial_velocity,stadium_set
 from find_intersection_func import find_intersection
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
@@ -16,13 +16,13 @@ from find_reflect_direction import find_reflect_direction
 fig ,ax = plt.subplots()
 stadium_set(ax)
 
-position = np.array([0.0,0.0])
-velocity = np.array([3.0 ,4.0])
 
 print("-------------------------------------")
-print(f"初期値:{position}")
-print(f"初速度:{velocity}")
+print(f"初期値:{initial_position}")
+print(f"初速度:{initial_velocity}")
 
+position = initial_position.copy()
+velocity = initial_velocity.copy()
 
 def update(frame):
 
@@ -32,12 +32,13 @@ def update(frame):
     print("-------------------------------------")
     print(f"位置:{position}")
     print(f"速度:{velocity}")
+    print(f"速度の大きさ:{np.linalg.norm(velocity)}")
     print(f"y = {velocity[1] /velocity[0]}x + {-velocity[1] /velocity[0] * position[0] + position[1]}")
-    print(intersection)
+    print(f"交点:{intersection}")
     plt.plot([intersection[0]],[intersection[1]] , "o",color = "black" ,ms = 3)
 
-    ordit_x = np.linspace(intersection[0] ,position[0] ,100)
-    ordit_y = velocity[1] /velocity[0] * (ordit_x - position[0]) + position[1]
+    ordit_x = np.linspace(intersection[0] ,position[0] ,100) if intersection[0] - position[0] != 0 else [position[0] for _ in range(100)]
+    ordit_y = velocity[1] /velocity[0] * (ordit_x - position[0]) + position[1] if velocity[0] != 0 else np.linspace(intersection[1] ,position[1] ,100)
 
     plt.plot(ordit_x,ordit_y,color = "black" ,linewidth = 1 ,alpha=0.1)
 
@@ -45,7 +46,8 @@ def update(frame):
     reflected_velocity = find_reflect_direction(position,velocity,wall_width)
     velocity[:2] = reflected_velocity[:2]
 
-ani = FuncAnimation(fig, update, frames=10, interval=1000 ,repeat=False)
+
+ani = FuncAnimation(fig, update, frames=100, interval=100 ,repeat=False)
 
 ax.set_aspect('equal')
 plt.show()
