@@ -1,9 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-wall_width =4.0
+wall_width =2.0
 wall_heigth =2.0
-half_circle_diameter =2.0
+half_circle_diameter =1.0
+
+initial_position = np.array([0.0 ,0.5 / np.sqrt(2)])
+initial_velocity = np.array([0.002, 0.0])
 
 def squre_set(ax) :
     ax.plot(0, 0)
