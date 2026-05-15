@@ -1,15 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from decimal import Decimal
 
 import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.join(os.path.dirname(__file__),'../func/stadium'))
+sys.path.append(os.path.join(os.path.dirname(__file__),'../func/squre'))
 
 from setting import wall_width, wall_heigth ,squre_set
-
+from find_intersection_reversion import find_intersection_reversion
+from find_reflect_direction import find_reflect_direction
 
 fig ,ax = plt.subplots()
 squre_set(ax)
@@ -17,8 +19,8 @@ squre_set(ax)
 
 position_1 = np.array([0.0,0.0])
 position_2 = np.array([0.0,0.0])
-velocity_1 = np.array([2.0 ,3.0])
-velocity_2 = np.array([2.0 ,3.001])
+velocity_1 = np.array([0.005 ,0.003])
+velocity_2 = np.array([0.005 ,0.002])
 
 dot_1, = plt.plot([] ,[] , "o" , color = "black" ,ms = 3)
 dot_2, = plt.plot([] ,[] , "o" , color = "red" ,ms = 3)
@@ -33,9 +35,9 @@ def create_ordit_dot(initial_position ,initial_velocity):
     v = initial_velocity.copy()
 
     for _ in range(50):
-        intersection = find_intersection_reversion(p ,v ,wall_width ,half_circle_diameter)
+        intersection = find_intersection_reversion(p ,v ,wall_width ,wall_heigth)
         intersections.append(intersection.copy())
-        v = find_reflect_direction(intersection ,v ,wall_width)
+        v = find_reflect_direction(intersection ,v ,wall_width,wall_heigth)
         p = intersection.copy()
         positions.append(p.copy())
         velocities.append(v.copy())
@@ -49,7 +51,7 @@ def create_ordit_dot(initial_position ,initial_velocity):
         norm_velocity = np.linalg.norm(velocities[i])
 
 
-        time = max(int(norm_length /norm_velocity *100) ,2)
+        time = max(int(norm_length /norm_velocity *10) ,2)
 
         seg_x = np.linspace(positions[i][0], intersections[i][0] , time )
         seg_y = np.linspace(positions[i][1], intersections[i][1] , time )
