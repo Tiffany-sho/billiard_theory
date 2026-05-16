@@ -29,6 +29,11 @@ def find_intersection_reversion(point,velocity,W, H) :
     temp_intersection_y = H /2 if velocity[1] > 0 else -H /2
     temp_intersection_ty =( temp_intersection_y - point[1] ) / velocity[1]
 
-    valid_t = min(temp_intersection_tx,temp_intersection_ty)
+    if temp_intersection_tx < temp_intersection_ty :
+        return np.array([temp_intersection_x , point[1] + velocity[1] * temp_intersection_tx])
 
-    return point + valid_t * velocity
+    elif temp_intersection_tx > temp_intersection_ty :
+        return np.array([point[0] + velocity[0] * temp_intersection_ty ,temp_intersection_y ])
+
+    else :
+        return np.array([temp_intersection_tx ,temp_intersection_ty])
