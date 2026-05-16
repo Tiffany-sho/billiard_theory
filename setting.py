@@ -5,8 +5,8 @@ wall_width =2.0
 wall_heigth =1.0
 half_circle_diameter =1.0
 
-initial_position = np.array([0.0 ,0.0])
-initial_velocity = np.array([0.1, 0.5])
+initial_position = np.array([0.432 ,0.51])
+initial_velocity = np.array([0.134, 0.2873])
 
 def squre_set(ax) :
     ax.plot(0, 0)

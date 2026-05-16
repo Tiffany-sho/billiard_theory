@@ -19,8 +19,8 @@ squre_set(ax)
 
 position_1 = np.array([0.0,0.0])
 position_2 = np.array([0.0,0.0])
-velocity_1 = np.array([0.005 ,0.003])
-velocity_2 = np.array([0.005 ,0.002])
+velocity_1 = np.array([0.5 ,0.3])
+velocity_2 = np.array([0.5 ,0.3001])
 
 dot_1, = plt.plot([] ,[] , "o" , color = "black" ,ms = 3)
 dot_2, = plt.plot([] ,[] , "o" , color = "red" ,ms = 3)
