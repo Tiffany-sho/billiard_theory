@@ -1,23 +1,28 @@
 import numpy as np
+import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 
 wall_width =2.0
-wall_heigth =1.0
+wall_height =1.0
+
 half_circle_diameter =1.0
 
-initial_position = np.array([0.432 ,0.51])
-initial_velocity = np.array([0.134, 0.2873])
+sinai_wall_height = 2.0
+sinai_circle_diameter = 1.0
+
+initial_position = np.array([0.0 ,0.5])
+initial_velocity = np.array([-0.03, -0.05])
 
 def squre_set(ax) :
     ax.plot(0, 0)
     ax.set_xlim(-wall_width /2 -1.0, wall_width /2 + 1.0)
-    ax.set_ylim(-wall_heigth /2 -1.0, wall_heigth /2 + 1.0)
+    ax.set_ylim(-wall_height /2 -1.0, wall_height /2 + 1.0)
 
     wall_width_x = np.linspace(-wall_width /2 ,wall_width /2 ,100)
-    wall_heigth_y = np.linspace(-wall_heigth /2 ,wall_heigth /2 ,100)
+    wall_heigth_y = np.linspace(-wall_height /2 ,wall_height /2 ,100)
 
-    plt.plot(wall_width_x, [wall_heigth/2 for _ in range(100)] , linewidth = 1,color='black')
-    plt.plot(wall_width_x, [-wall_heigth/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot(wall_width_x, [wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot(wall_width_x, [-wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
     plt.plot([wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
     plt.plot([-wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
 
@@ -35,3 +40,31 @@ def stadium_set(ax) :
     plt.plot(wall_width_x, [-half_circle_diameter/2 for _ in range(100)] , linewidth = 1,color='black')
     plt.plot(right_circle + wall_width /2 ,wall_circle_y , linewidth = 1,color='black')
     plt.plot(-right_circle - wall_width /2,wall_circle_y , linewidth = 1,color='black')
+
+def sinai_set(ax) :
+    ax.plot(0, 0)
+    ax.set_xlim(-wall_width /2 -1.0, wall_width /2 + 1.0)
+    ax.set_ylim(-sinai_wall_height /2 -1.0, sinai_wall_height /2 + 1.0)
+
+    wall_width_x = np.linspace(-wall_width /2 ,wall_width /2 ,100)
+    wall_heigth_y = np.linspace(-sinai_wall_height /2 ,sinai_wall_height /2 ,100)
+
+    plt.plot(wall_width_x, [sinai_wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot(wall_width_x, [-sinai_wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot([wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
+    plt.plot([-wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
+
+    sinai_circle_x = np.linspace(-sinai_circle_diameter /2 , sinai_circle_diameter /2 ,10000)
+    sinai_up_circle_y = np.sqrt(((half_circle_diameter /2) **2 - sinai_circle_x ** 2)) 
+    sinai_down_circle_y = -np.sqrt(((half_circle_diameter /2) **2 - sinai_circle_x ** 2))
+
+    plt.plot(sinai_circle_x ,sinai_up_circle_y , linewidth = 1,color='black')
+    plt.plot(sinai_circle_x,sinai_down_circle_y , linewidth = 1,color='black')
+
+def poincare_map_set(ax):
+    ax.plot(0, 0)
+    ax.set_xlim(-np.acos(-1), np.acos(-1))
+    ax.set_ylim(-1 , 1 )
+
+    ax.set_xticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi])
+    ax.set_xticklabels([r'$-\pi$', r'$-\pi/2$', r'$0$', r'$\pi/2$', r'$\pi$'])

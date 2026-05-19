@@ -9,7 +9,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/squre'))
 
-from setting import wall_width, wall_heigth ,squre_set
+from setting import wall_width, wall_height ,squre_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
@@ -35,9 +35,9 @@ def create_ordit_dot(initial_position ,initial_velocity):
     v = initial_velocity.copy()
 
     for _ in range(50):
-        intersection = find_intersection_reversion(p ,v ,wall_width ,wall_heigth)
+        intersection = find_intersection_reversion(p ,v ,wall_width ,wall_height)
         intersections.append(intersection.copy())
-        v = find_reflect_direction(intersection ,v ,wall_width,wall_heigth)
+        v = find_reflect_direction(intersection ,v ,wall_width,wall_height)
         p = intersection.copy()
         positions.append(p.copy())
         velocities.append(v.copy())

@@ -38,7 +38,7 @@ def create_ordit_dot(initial_position ,initial_velocity):
         intersection = find_intersection_reversion(p ,v ,wall_width ,sinai_wall_height,sinai_circle_diameter)
         intersections.append(intersection.copy())
         v = find_reflect_direction(intersection ,v ,wall_width,sinai_wall_height,sinai_circle_diameter)
-        p = intersection.copy()
+        p = intersection
         positions.append(p.copy())
         velocities.append(v.copy())
 

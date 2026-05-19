@@ -7,7 +7,7 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from setting import wall_width, wall_heigth ,squre_set
+from setting import wall_width, wall_height ,squre_set
 
 fig ,ax = plt.subplots()
 squre_set(ax)
@@ -28,7 +28,7 @@ def update(frame):
 
     if np.abs(round(position[0],5)) == wall_width /2 :
         velocity[0] *= -1
-    if np.abs(round(position[1],5)) == wall_heigth /2 :
+    if np.abs(round(position[1],5)) == wall_height /2 :
         velocity[1] *= -1
 
     dot.set_data([position[0]], [position[1]])

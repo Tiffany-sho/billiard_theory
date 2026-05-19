@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/squre'))
 
-from setting import wall_width, wall_heigth ,initial_position ,initial_velocity,squre_set
+from setting import wall_width, wall_height ,initial_position ,initial_velocity,squre_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
@@ -25,8 +25,7 @@ velocity = initial_velocity.copy()
 
 def update(frame):
 
-    # intersection = find_intersection(position,velocity,wall_width, half_circle_diameter)
-    intersection = find_intersection_reversion(position,velocity,wall_width, wall_heigth)
+    intersection = find_intersection_reversion(position,velocity,wall_width, wall_height)
 
     print("-------------------------------------")
     print(f"位置:{position}")
@@ -42,7 +41,7 @@ def update(frame):
     plt.plot(ordit_x,ordit_y,color = "black" ,linewidth = 1 ,alpha=0.1)
 
     position[:2] = intersection[:2]
-    reflected_velocity = find_reflect_direction(position,velocity,wall_width,wall_heigth)
+    reflected_velocity = find_reflect_direction(position,velocity,wall_width,wall_height)
     print(f"反射速度:{reflected_velocity}")
     velocity[:2] = reflected_velocity[:2]
 
