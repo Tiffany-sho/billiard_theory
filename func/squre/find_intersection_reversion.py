@@ -35,6 +35,4 @@ def find_intersection_reversion(point,velocity,W, H) :
         return np.array([point[0] + velocity[0] * temp_intersection_ty ,temp_intersection_y ])
 
     else :
-        print("_____________________________")
-        print([temp_intersection_x ,temp_intersection_y])
         return np.array([temp_intersection_x ,temp_intersection_y])

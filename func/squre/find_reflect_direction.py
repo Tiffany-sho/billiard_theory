@@ -10,7 +10,5 @@ def find_reflect_direction(intersection,velocity,W,H) :
     
     else:
         reflected = np.array([velocity[0] ,-velocity[1]])
-    
-
 
     return reflected / np.linalg.norm(reflected) * speed
