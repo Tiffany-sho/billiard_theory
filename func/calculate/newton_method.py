@@ -16,6 +16,5 @@ def newton_method (a ,b ,c ,range):
             x = new_x
             error = a * x ** 2 + b * x + c
 
-        print(x)
         return x
  
