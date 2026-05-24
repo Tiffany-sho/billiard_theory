@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 
-wall_width =2.0
+wall_width =100.0
 wall_height =1.0
 
 half_circle_diameter =1.0
@@ -11,7 +11,7 @@ sinai_wall_height = 2.0
 sinai_circle_diameter = 1.0
 
 initial_position = np.array([0.0 ,0.5])
-initial_velocity = np.array([-0.03, -0.05])
+initial_velocity = np.array([-0.03, -0.0001])
 
 def squre_set(ax) :
     ax.plot(0, 0)
@@ -66,5 +66,5 @@ def poincare_map_set(ax):
     ax.set_xlim(-np.acos(-1), np.acos(-1))
     ax.set_ylim(-1 , 1 )
 
-    ax.set_xticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi])
-    ax.set_xticklabels([r'$-\pi$', r'$-\pi/2$', r'$0$', r'$\pi/2$', r'$\pi$'])
+    ax.set_xticks([-np.pi,-3*np.pi/4, -np.pi/2,-np.pi/4, 0,np.pi/4, np.pi/2,3*np.pi/4, np.pi])
+    ax.set_xticklabels([r'$-\pi$',r'$-3\pi/4$', r'$-\pi/2$',r'$-\pi/4$', r'$0$',r'$\pi/4$', r'$\pi/2$',r'$-3\pi/4$', r'$\pi$'])
