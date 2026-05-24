@@ -47,7 +47,7 @@ def update(frame):
     velocity[:2] = reflected_velocity[:2]
 
 
-ani = FuncAnimation(fig, update, frames=100, interval=100 ,repeat=False)
+ani = FuncAnimation(fig, update, frames=100, interval=1 ,repeat=False)
 
 ax.set_aspect('equal')
 plt.show()

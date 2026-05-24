@@ -3,7 +3,7 @@ import numpy as np
 def find_reflect_direction(intersection,velocity,W,H,D) :
     speed = np.linalg.norm(velocity)
     print(np.linalg.norm(intersection))
-    if np.isclose(np.linalg.norm(intersection), D / 2):
+    if np.linalg.norm(intersection) == D / 2 :
         n_norm = np.linalg.norm(intersection)
 
         n_hat = intersection / n_norm
