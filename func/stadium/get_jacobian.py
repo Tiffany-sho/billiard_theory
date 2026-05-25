@@ -3,11 +3,7 @@ import numpy as np
 def get_jacobian(intersection ,W ,H ,angle):
 
     if np.abs(intersection[0]) <= W /2:
-        r = H / 2 / np.sin(angle)
-        dr_dsita = - H / 2 * np.cos(angle) / np.sin(angle) ** 2
-
-        print(np.sqrt(r ** 2 + dr_dsita ** 2))
-        print(H / 2 / np.sin(angle) ** 2)
+        return H / 2 / np.sin(angle) ** 2
 
     elif intersection[0] > W / 2 :
         D = (H / 2) ** 2 - (W / 2 * np.sin(angle)) ** 2
