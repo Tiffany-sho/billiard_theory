@@ -43,8 +43,8 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H):
         collision_angle.append(set_collision_angle)
         reflection_sin.append(set_reflection_sin)
     plt.scatter(collision_angle,reflection_sin,s=3)
-    fig.savefig(f"stadium/graph_data/poincare_depend_w_h/poincare_{W,H}.png")
+    fig.savefig(f"stadium/graph_data/poincare_depend_w_h_polar/poincare_{W,H}.png")
 
-for i in range(10,20):
-    for j in range (10,20):
-        create_poincare_dot(initial_position,initial_velocity,i/10,j/10)
+for i in range(0,6):
+    for j in range (0,6):
+        create_poincare_dot(initial_position,initial_velocity,1 + i * 0.2 ,1 + j * 0.2)

@@ -43,7 +43,9 @@ def create_poincare_dot(initial_position ,initial_velocity):
         reflection_sin.append(set_reflection_sin)
 
     plt.scatter(arc_length,reflection_sin,s=3)
+    fig.savefig(f"stadium/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
-create_poincare_dot(initial_position,initial_velocity)
 
-plt.show()
+for i in range(0,6):
+    for j in range (0,6):
+        create_poincare_dot(initial_position,initial_velocity,1 + i * 0.2 ,1 + j * 0.2)
