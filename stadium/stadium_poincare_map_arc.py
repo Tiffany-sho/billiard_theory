@@ -15,25 +15,25 @@ from find_reflect_direction import find_reflect_direction
 from get_normal_vector import get_normal_vector
 from get_arc_length import get_arc_length
 
-fig ,ax = plt.subplots()
-poincare_map_arc_set(ax)
 
 
-def create_poincare_dot(initial_position ,initial_velocity):
+def create_poincare_dot(initial_position ,initial_velocity,W,H):
 
+    fig ,ax = plt.subplots()
+    poincare_map_arc_set(ax,W,H)
     arc_length = []
     reflection_sin = []
 
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for _ in range(1000):
-        intersection = find_intersection_reversion(p ,v ,wall_width ,half_circle_diameter)
-        reflected_v = find_reflect_direction(intersection ,v ,wall_width)
+    for _ in range(3000):
+        intersection = find_intersection_reversion(p ,v ,W ,H)
+        reflected_v = find_reflect_direction(intersection ,v ,W)
 
-        set_arc_length = get_arc_length(intersection,wall_width,half_circle_diameter)
+        set_arc_length = get_arc_length(intersection,W,H)
 
-        n = get_normal_vector(intersection,wall_width,half_circle_diameter)
+        n = get_normal_vector(intersection,W,H)
 
         set_reflection_sin = np.cross(v /np.linalg.norm(v) ,n)
 
@@ -43,9 +43,12 @@ def create_poincare_dot(initial_position ,initial_velocity):
         reflection_sin.append(set_reflection_sin)
 
     plt.scatter(arc_length,reflection_sin,s=3)
-    fig.savefig(f"stadium/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
+    # fig.savefig(f"stadium/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
 
-for i in range(0,6):
-    for j in range (0,6):
-        create_poincare_dot(initial_position,initial_velocity,1 + i * 0.2 ,1 + j * 0.2)
+# for i in range(0,6):
+#     for j in range (0,6):
+#         create_poincare_dot(initial_position,initial_velocity,1 + i * 0.2 ,1 + j * 0.2)
+
+create_poincare_dot(initial_position,initial_velocity,1 ,1 )
+plt.show()

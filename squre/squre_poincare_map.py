@@ -14,14 +14,15 @@ from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 from get_normal_vector import get_normal_vector
 
-fig ,ax = plt.subplots()
-poincare_map_set(ax)
+
 
 position_1 = np.array([0.0,0.5])
 velocity_1 = np.array([-0.03, -0.05])
 
-def create_poincare_dot(initial_position ,initial_velocity):
+def create_poincare_dot(initial_position ,initial_velocity ,W ,H):
 
+    fig ,ax = plt.subplots()
+    poincare_map_set(ax ,W ,H)
 
     collision_angle = []
     reflection_sin = []
@@ -46,8 +47,6 @@ def create_poincare_dot(initial_position ,initial_velocity):
 
     plt.scatter(collision_angle,reflection_sin)
 
-create_poincare_dot(position_1,velocity_1)
-
-print(np.acos(-1/np.sqrt(2))*360/2/np.pi)
+create_poincare_dot(position_1,velocity_1 ,1 ,1)
 
 plt.show()

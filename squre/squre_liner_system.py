@@ -15,7 +15,6 @@ from find_reflect_direction import find_reflect_direction
 fig ,ax = plt.subplots()
 squre_set(ax)
 
-
 print("-------------------------------------")
 print(f"初期値:{initial_position}")
 print(f"初速度:{initial_velocity}")
