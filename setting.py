@@ -3,28 +3,28 @@ import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 
 wall_width =1.0
-wall_height =1.0
+wall_height =2.0
 
-half_circle_diameter =1.0
+half_circle_diameter =50.0
 
 sinai_wall_height = 2.0
 sinai_circle_diameter = 1.0
 
-initial_position = np.array([0.0 ,0.4])
-initial_velocity = np.array([0.01, 0.01])
+initial_position = np.array([0.00 ,0.0])
+initial_velocity = np.array([0.09, -0.05])
 
-def squre_set(ax) :
+def squre_set(ax,W,H) :
     ax.plot(0, 0)
-    ax.set_xlim(-wall_width /2 -1.0, wall_width /2 + 1.0)
-    ax.set_ylim(-wall_height /2 -1.0, wall_height /2 + 1.0)
+    ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
+    ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    wall_width_x = np.linspace(-wall_width /2 ,wall_width /2 ,100)
-    wall_heigth_y = np.linspace(-wall_height /2 ,wall_height /2 ,100)
+    W_x = np.linspace(-W /2 ,W /2 ,100)
+    wall_heigth_y = np.linspace(-H /2 ,H /2 ,100)
 
-    plt.plot(wall_width_x, [wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
-    plt.plot(wall_width_x, [-wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
-    plt.plot([wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
-    plt.plot([-wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
+    plt.plot(W_x, [H/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot(W_x, [-H/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot([W/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
+    plt.plot([-W/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
 
 def stadium_set(ax) :
 
@@ -76,6 +76,20 @@ def poincare_map_set(ax,W,H):
     ax.set_xticks([-np.pi,-3*np.pi/4, -np.pi/2,-np.pi/4, 0,np.pi/4, np.pi/2,3*np.pi/4, np.pi])
     ax.set_xticklabels([r'$-\pi$',r'$-3\pi/4$', r'$-\pi/2$',r'$-\pi/4$', r'$0$',r'$\pi/4$', r'$\pi/2$',r'$-3\pi/4$', r'$\pi$'])
 
-def poincare_map_arc_set(ax):
+def stadium_poincare_map_arc_set(ax,W,H):
+    ax.set_title(f"W = {W},H = {H}")
+    ax.axvline(x=W/2,color = "red" ,linestyle="--")
+    ax.axvline(x=-W/2,color = "red" ,linestyle="--")
+    ax.axvline(x=W/2 + H/2*np.pi,color = "red" ,linestyle="--")
+    ax.axvline(x=-W/2 - H/2*np.pi,color = "red" ,linestyle="--")
     ax.plot(0, 0)
-    ax.set_xlim(-(wall_width + half_circle_diameter * np.pi / 2), wall_width + half_circle_diameter * np.pi / 2)
+    ax.set_xlim(-(W + H * np.pi / 2), W + H * np.pi / 2)
+
+def squrt_poincare_map_arc_set(ax,W,H):
+    ax.set_title(f"W = {W},H = {H}")
+    ax.axvline(x=W/2,color = "red" ,linestyle="--")
+    ax.axvline(x=-W/2,color = "red" ,linestyle="--")
+    ax.axvline(x=W/2 + H,color = "red" ,linestyle="--")
+    ax.axvline(x=-W/2 - H,color = "red" ,linestyle="--")
+    ax.plot(0, 0)
+    ax.set_xlim(-(W + H ), W + H )
