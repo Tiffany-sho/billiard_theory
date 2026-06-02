@@ -12,8 +12,6 @@ def find_intersection_reversion(point,velocity,W, D) :
 
     newton_method_range = np.sqrt((W + D) ** 2 + D ** 2) / np.linalg.norm(velocity)
 
-    print("パラメータ法実行")
-
     if velocity[0] == 0 and velocity[1] == 0 :
         return point.copy()
     
@@ -30,10 +28,8 @@ def find_intersection_reversion(point,velocity,W, D) :
     
     if velocity[1] == 0 :
         y = point[1]
-        if velocity[0] > 0 :
-            x = np.sign(y) * np.sqrt((D /2) ** 2 - y ** 2) + W / 2
-        else :
-            x = np.sign(y) * np.sqrt((D /2) ** 2 - y ** 2) - W / 2
+        x = np.sign(velocity[0]) * np.sqrt((D /2) ** 2 - y ** 2) + W / 2
+       
         return np.array([x,y])
     
 

@@ -7,8 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 def find_intersection_reversion(point,velocity,W, H) :
 
-    print("パラメータ法実行")
-
     if velocity[0] == 0.0 and velocity[1] == 0.0 :
         return point.copy()
     
@@ -27,9 +25,6 @@ def find_intersection_reversion(point,velocity,W, H) :
 
     temp_intersection_y = H /2 if velocity[1] > 0 else -H /2
     temp_intersection_ty =( temp_intersection_y - point[1] ) / velocity[1]
-
-    print(temp_intersection_tx)
-    print(temp_intersection_ty)
 
     if np.isclose(temp_intersection_tx,temp_intersection_ty):
         return np.array([temp_intersection_x ,temp_intersection_y])
