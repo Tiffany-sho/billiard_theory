@@ -9,12 +9,18 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/stadium'))
 
-from setting import initial_position,initial_velocity, wall_width, half_circle_diameter ,stadium_poincare_map_arc_set
+from setting import stadium_poincare_map_arc_set
+from stadium_liner_system import stadium_liner_system
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 from get_normal_vector import get_normal_vector
 from get_arc_length import get_arc_length
 
+wall_width =2.0
+wall_height =2.0
+
+position_1 = np.array([0.0,1 / np.sqrt(2)])
+velocity_1 = np.array([-0.05, 0.05])
 
 
 def create_poincare_dot(initial_position ,initial_velocity,W,H):
@@ -27,7 +33,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H):
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for _ in range(3000):
+    for i in range(3000):
         intersection = find_intersection_reversion(p ,v ,W ,H)
         reflected_v = find_reflect_direction(intersection ,v ,W)
 
@@ -35,20 +41,26 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H):
 
         n = get_normal_vector(intersection,W,H)
 
-        set_reflection_sin = np.cross(v /np.linalg.norm(v) ,n)
+        v_norm = v / np.linalg.norm(v)
+
+        cross_2d = v_norm[0] * n[1] - v_norm[1] * n[0]
+        
+        set_reflection_sin = cross_2d
+
 
         p = intersection
         v = reflected_v
         arc_length.append(set_arc_length)
         reflection_sin.append(set_reflection_sin)
 
+        if  i != 0 and np.allclose(arc_length[0] , set_arc_length) and np.allclose(reflection_sin[0] , set_reflection_sin): 
+            print(f"起動周期性あり。{i}回衝突")
+            break
+        
+
     plt.scatter(arc_length,reflection_sin,s=3)
     # fig.savefig(f"stadium/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
-
-# for i in range(0,6):
-#     for j in range (0,6):
-#         create_poincare_dot(initial_position,initial_velocity,1 + i * 0.2 ,1 + j * 0.2)
-
-create_poincare_dot(initial_position,initial_velocity,1 ,1 )
+create_poincare_dot(position_1,velocity_1,wall_width,wall_height )
+stadium_liner_system(position_1,velocity_1,wall_width,wall_height )
 plt.show()

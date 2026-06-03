@@ -16,11 +16,11 @@ from find_reflect_direction import find_reflect_direction
 from get_normal_vector import get_normal_vector
 from get_jacobian import get_jacobian
 
-wall_width =0.0
+wall_width =2.0
 wall_height =2.0
 
 position_1 = np.array([0.0,1 / np.sqrt(2)])
-velocity_1 = np.array([-0.05, 0.0])
+velocity_1 = np.array([-0.05, 0.05])
 
 
 
@@ -64,7 +64,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H):
         
 
     plt.scatter(collision_angle,reflection_sin,s=3)
-    fig.savefig(f"stadium/graph_data/poincare_depend_w_h_polar/poincare_{W,H}.png")
+    # fig.savefig(f"stadium/graph_data/poincare_depend_w_h_polar/poincare_{W,H}.png")
 
 create_poincare_dot(position_1,velocity_1,wall_width,wall_height )
 stadium_liner_system(position_1,velocity_1,wall_width,wall_height )
