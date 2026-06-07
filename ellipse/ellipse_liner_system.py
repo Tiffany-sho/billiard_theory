@@ -31,13 +31,6 @@ def stadium_liner_system(initial_position,initial_velocity,W,H):
     def update(frame):
 
         intersection = find_intersection_func(position,velocity,W, H)
-
-        # print("-------------------------------------")
-        # print(f"位置:{position}")
-        # print(f"速度:{velocity}")
-        # print(f"速度の大きさ:{np.linalg.norm(velocity)}")
-        # print(f"y = {velocity[1] /velocity[0]}x + {-velocity[1] /velocity[0] * position[0] + position[1]}")
-        # print(f"交点:{intersection}")
         plt.plot([intersection[0]],[intersection[1]] , "o",color = "black" ,ms = 3)
 
         ordit_x = np.linspace(intersection[0] ,position[0] ,100) if intersection[0] - position[0] != 0 else [position[0] for _ in range(100)]
