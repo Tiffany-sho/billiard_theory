@@ -12,8 +12,9 @@ def newton_method (a ,b ,c ,range):
         error = a * init_fx ** 2 + b * init_fx + c
         x = init_fx
         while error > esp :
-            # print(error)
             new_x = (a * x ** 2 - c) /(2 * a * x + b )
+            if new_x == x :
+                return new_x
             x = new_x
             error = a * x ** 2 + b * x + c
         return x
