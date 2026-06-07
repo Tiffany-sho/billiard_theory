@@ -6,11 +6,11 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../calculate'))
 
-from vertical_vector import vertical_vector
+from newton_method import newton_method
 
 def find_intersection_reversion(point ,velocity ,W ,H ,D) :
 
-    print("パラメータ法実行")
+    newton_method_range = np.sqrt(W ** 2 + H ** 2) / np.linalg.norm(velocity)
 
     if velocity[0] == 0.0 and velocity[1] == 0.0 :
         return point.copy()
@@ -43,12 +43,11 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
 
         return np.array([x,y])
     
-    vertical_velocity = vertical_vector(velocity)
+    A = velocity[0] ** 2 + velocity[1] ** 2
+    B = np.dot(velocity,point)
+    C = point[0] ** 2 + point[1] ** 2 - (D / 2)
 
-    length = np.abs(np.dot(vertical_velocity ,point)) / np.linalg.norm(velocity)
-    if length > D /2 or np.dot(velocity ,point) > 0:
-
-        print("Wall")
+    if B ** 2 - A * C < 0 or (np.linalg.norm(point) - D / 2) <= 1e-10 :
         temp_intersection_x = W /2 if velocity[0] > 0 else -W /2
         temp_intersection_tx =( temp_intersection_x - point[0] ) / velocity[0]
 
@@ -65,13 +64,14 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             return np.array([temp_intersection_tx ,temp_intersection_ty])
         
     else:
-        HI = np.sqrt((D /2) ** 2 - length ** 2)
-        v_hat = velocity / np.linalg.norm(velocity)
-        n_hat = vertical_velocity / np.linalg.norm(vertical_velocity)
-        signed_length = np.dot(n_hat, point) 
-        intersection_p1 = n_hat * signed_length + v_hat * HI
-        intersection_p2 = n_hat * signed_length - v_hat * HI
-        if np.linalg.norm(intersection_p1 -point) < np.linalg.norm(intersection_p2 -point) :
-            return intersection_p1 * (D / 2) / np.linalg.norm(intersection_p1)
-        else :
-            return intersection_p2 * (D / 2) / np.linalg.norm(intersection_p2)
+        t1 =newton_method(A,2 * B,C,newton_method_range)
+        t2 =newton_method(A,2 * B,C,-newton_method_range)
+
+        valid_t = [t for t in (t1, t2) if t >= 0]
+
+        if valid_t:
+            right_t = min(valid_t)
+            if (np.linalg.norm(point + right_t * velocity) - D / 2) > 1e-10:
+                print("交点未発見エラー")
+                right_t = np.inf
+            return point + right_t * velocity

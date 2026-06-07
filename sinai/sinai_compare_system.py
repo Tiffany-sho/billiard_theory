@@ -9,12 +9,16 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/sinai'))
 
-from setting import wall_width, sinai_wall_height ,sinai_circle_diameter,sinai_set
+from setting import sinai_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
+wall_width =5.0
+wall_height =5.0
+sinai_circle_diameter = 2.0
+
 fig ,ax = plt.subplots()
-sinai_set(ax)
+sinai_set(ax,wall_width,wall_height,sinai_circle_diameter)
 
 
 position_1 = np.array([0.5,0.5])
@@ -35,9 +39,9 @@ def create_ordit_dot(initial_position ,initial_velocity):
     v = initial_velocity.copy()
 
     for _ in range(100):
-        intersection = find_intersection_reversion(p ,v ,wall_width ,sinai_wall_height,sinai_circle_diameter)
+        intersection = find_intersection_reversion(p ,v ,wall_width ,wall_height,sinai_circle_diameter)
         intersections.append(intersection.copy())
-        v = find_reflect_direction(intersection ,v ,wall_width,sinai_wall_height,sinai_circle_diameter)
+        v = find_reflect_direction(intersection ,v ,wall_width,wall_height,sinai_circle_diameter)
         p = intersection
         positions.append(p.copy())
         velocities.append(v.copy())
