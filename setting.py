@@ -2,16 +2,6 @@ import numpy as np
 import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 
-wall_width =1.0
-wall_height =2.0
-
-half_circle_diameter =50.0
-
-sinai_wall_height = 2.0
-sinai_circle_diameter = 1.0
-
-initial_position = np.array([0.00 ,0.0])
-initial_velocity = np.array([0.09, -0.05])
 
 def squre_set(ax,W,H) :
     ax.plot(0, 0)
@@ -41,25 +31,38 @@ def stadium_set(ax,W,H) :
     plt.plot(right_circle + W /2 ,wall_circle_y , linewidth = 1,color='black')
     plt.plot(-right_circle - W /2,wall_circle_y , linewidth = 1,color='black')
 
-def sinai_set(ax) :
+def sinai_set(ax,W,H,D) :
     ax.plot(0, 0)
-    ax.set_xlim(-wall_width /2 -1.0, wall_width /2 + 1.0)
-    ax.set_ylim(-sinai_wall_height /2 -1.0, sinai_wall_height /2 + 1.0)
+    ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
+    ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    wall_width_x = np.linspace(-wall_width /2 ,wall_width /2 ,100)
-    wall_heigth_y = np.linspace(-sinai_wall_height /2 ,sinai_wall_height /2 ,100)
+    W_x = np.linspace(-W /2 ,W /2 ,100)
+    wall_heigth_y = np.linspace(-H /2 ,H /2 ,100)
 
-    plt.plot(wall_width_x, [sinai_wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
-    plt.plot(wall_width_x, [-sinai_wall_height/2 for _ in range(100)] , linewidth = 1,color='black')
-    plt.plot([wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
-    plt.plot([-wall_width/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
+    plt.plot(W_x, [H/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot(W_x, [-H/2 for _ in range(100)] , linewidth = 1,color='black')
+    plt.plot([W/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
+    plt.plot([-W/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
 
-    sinai_circle_x = np.linspace(-sinai_circle_diameter /2 , sinai_circle_diameter /2 ,10000)
-    sinai_up_circle_y = np.sqrt(((half_circle_diameter /2) **2 - sinai_circle_x ** 2)) 
-    sinai_down_circle_y = -np.sqrt(((half_circle_diameter /2) **2 - sinai_circle_x ** 2))
+    sinai_circle_x = np.linspace(-D /2 , D /2 ,10000)
+    sinai_up_circle_y = np.sqrt(((D /2) **2 - sinai_circle_x ** 2)) 
+    sinai_down_circle_y = -np.sqrt(((D /2) **2 - sinai_circle_x ** 2))
 
     plt.plot(sinai_circle_x ,sinai_up_circle_y , linewidth = 1,color='black')
     plt.plot(sinai_circle_x,sinai_down_circle_y , linewidth = 1,color='black')
+
+def ellipse_set(ax,W,H) :
+    ax.plot(0, 0)
+    ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
+    ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
+
+    x = np.linspace(-W /2 ,W /2 ,10000)
+    y = (H /2) * np.sqrt(1 - (x / (W / 2)) ** 2)
+
+    plt.plot(x,y,linewidth = 1,color='black')
+    plt.plot(x,-y,linewidth = 1,color='black')
+
+    
 
 def poincare_map_set(ax,W,H):
 
