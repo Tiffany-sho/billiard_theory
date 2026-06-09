@@ -59,7 +59,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H):
         
 
     plt.scatter(arc_angle,reflection_sin,s=3)
-    # fig.savefig(f"stadium/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
+    # fig.savefig(f"ellipse/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
 create_poincare_dot(position_1,velocity_1,wall_width,wall_height )
 plt.show()
