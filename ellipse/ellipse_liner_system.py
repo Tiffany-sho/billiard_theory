@@ -9,16 +9,16 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/ellipse'))
 
 from setting import ellipse_set
-from find_intersection_func import find_intersection_func
+from find_intersection_func import find_intersection_func ,find_intersection_format
 from find_reflect_direction import find_reflect_direction
 
 max_frame = 100
 
-wall_width =12.0
-wall_height =5.0
+wall_width = 4.0
+wall_height =2.0
 
-position_1 = np.array([0.5,0.8])
-velocity_1 = np.array([0.05, 0.35])
+position_1 = np.array([-0.36 ,0.19])
+velocity_1 = np.array([-0.76 , 0.04])
 
 def stadium_liner_system(initial_position,initial_velocity,W,H):
 
@@ -31,6 +31,10 @@ def stadium_liner_system(initial_position,initial_velocity,W,H):
     def update(frame):
 
         intersection = find_intersection_func(position,velocity,W, H)
+
+        if intersection is None:
+            print("交点が見つかりませんでした")
+            return
         plt.plot([intersection[0]],[intersection[1]] , "o",color = "black" ,ms = 3)
 
         ordit_x = np.linspace(intersection[0] ,position[0] ,100) if intersection[0] - position[0] != 0 else [position[0] for _ in range(100)]
@@ -47,7 +51,7 @@ def stadium_liner_system(initial_position,initial_velocity,W,H):
             frame = max_frame
         
 
-    ani = FuncAnimation(fig, update, frames=max_frame, interval=10 ,repeat=False)
+    ani = FuncAnimation(fig, update, frames=max_frame, interval=100 ,repeat=False)
 
     ax.set_aspect('equal')
     plt.show()

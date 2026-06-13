@@ -97,3 +97,11 @@ def squrt_poincare_map_arc_set(ax,W,H):
     ax.axvline(x=-W/2 - H,color = "red" ,linestyle="--")
     ax.plot(0, 0)
     ax.set_xlim(-(W + H ), W + H )
+
+def ellipse_poincare_map(ax,W,H):
+    ax.set_title(f"W = {W},H = {H}")
+    ax.axvline(x=np.pi/2,color = "red" ,linestyle="--")
+    ax.axvline(x=-np.pi/2,color = "red" ,linestyle="--")
+    ax.plot(0, 0)
+    ax.set_xlim(-(np.pi ), np.pi )
+    ax.set_ylim(-(1 ), 1 )
