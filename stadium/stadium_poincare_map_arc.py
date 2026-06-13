@@ -16,24 +16,25 @@ from find_reflect_direction import find_reflect_direction
 from get_normal_vector import get_normal_vector
 from get_arc_length import get_arc_length
 
-wall_width =2.0
-wall_height =2.0
+# wall_width =2.0
+# wall_height =4.0
 
-position_1 = np.array([0.0,1 / np.sqrt(2)])
-velocity_1 = np.array([-0.05, 0.05])
+# position_1 = np.array([0.0,1 / np.sqrt(2)])
+# velocity_1 = np.array([-0.05, 0.05])
 
+# fig ,ax = plt.subplots()
+# stadium_poincare_map_arc_set(ax,wall_width,wall_height)
 
-def create_poincare_dot(initial_position ,initial_velocity,W,H):
+def create_poincare_dot(initial_position ,initial_velocity,W,H,color):
 
-    fig ,ax = plt.subplots()
-    stadium_poincare_map_arc_set(ax,W,H)
+    
     arc_length = []
     reflection_sin = []
 
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for i in range(3000):
+    for i in range(10000):
         intersection = find_intersection_reversion(p ,v ,W ,H)
         reflected_v = find_reflect_direction(intersection ,v ,W)
 
@@ -58,9 +59,9 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H):
             break
         
 
-    plt.scatter(arc_length,reflection_sin,s=3)
+    plt.scatter(arc_length,reflection_sin,s=0.1,c=color)
     # fig.savefig(f"stadium/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
-create_poincare_dot(position_1,velocity_1,wall_width,wall_height )
-stadium_liner_system(position_1,velocity_1,wall_width,wall_height )
-plt.show()
+# create_poincare_dot(position_1,velocity_1,wall_width,wall_height ,"red")
+# stadium_liner_system(position_1,velocity_1,wall_width,wall_height )
+# plt.show()

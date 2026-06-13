@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 
+basic_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
 def squre_set(ax,W,H) :
     ax.plot(0, 0)

@@ -17,3 +17,23 @@ def get_arc_length(intersection ,W ,H):
             return W / 2 + arc
         else:
             return - W / 2 -arc
+
+def get_position(sum_arc ,arc_length ,W ,H):
+
+    if abs(arc_length) <= W /2:
+        return np.array([arc_length , H /2])
+    
+    elif abs(arc_length) <= (W + H * np.pi ) / 2:
+
+        if arc_length > 0 :
+            sita = 2 * (arc_length - W / 2) / H
+            return np.array([H / 2 * np.sin(sita) + W / 2 , H / 2 * np.cos(sita)])
+        else:
+            sita = 2 * (arc_length + W / 2) / H
+            return np.array([H / 2 * np.sin(sita) - W / 2 ,  H / 2 * np.cos(sita)])
+        
+    else:
+        if arc_length > 0 :
+            return np.array([sum_arc /2 - arc_length , -H /2])
+        else:
+            return np.array([-sum_arc /2 - arc_length , -H /2])
