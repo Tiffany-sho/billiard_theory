@@ -61,7 +61,7 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             return np.array([point[0] + velocity[0] * temp_intersection_ty ,temp_intersection_y ])
 
         else :
-            return np.array([temp_intersection_tx ,temp_intersection_ty])
+            return np.array([temp_intersection_x ,temp_intersection_y])
         
     else:
         t1 =newton_method(A,2 * B,C,newton_method_range)

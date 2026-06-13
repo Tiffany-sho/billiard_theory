@@ -16,15 +16,17 @@ max_frame = 100
 
 wall_width =5.0
 wall_height =5.0
-sinai_circle_diameter = 2.0
+sinai_circle_diameter = 2.1
 
 position_1 = np.array([-2.0,0.0])
-velocity_1 = np.array([-0.5, 0.05])
+velocity_1 = np.array([-0.01, 0.05])
 
 def sinai_liner_system(initial_position,initial_velocity,W,H,D):
 
     fig ,ax = plt.subplots()
     sinai_set(ax,W,H,D)
+
+    plt.plot([initial_position[0]],[initial_position[1]] , "o",color = "black" ,ms = 3)
 
     position = initial_position.copy()
     velocity = initial_velocity.copy()
