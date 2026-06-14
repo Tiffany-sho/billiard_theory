@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 
-basic_colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+basic_colors = [ 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
 def squre_set(ax,W,H) :
+    ax.set_title(f"W = {W},H = {H}")
     ax.plot(0, 0)
     ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
@@ -18,7 +19,7 @@ def squre_set(ax,W,H) :
     plt.plot([-W/2 for _ in range(100)] ,wall_heigth_y , linewidth = 1,color='black')
 
 def stadium_set(ax,W,H) :
-
+    ax.set_title(f"W = {W},H = {H}")
     ax.plot(0, 0)
     ax.set_xlim(-W /2 -H, W /2 +H)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
@@ -33,6 +34,7 @@ def stadium_set(ax,W,H) :
     plt.plot(-right_circle - W /2,wall_circle_y , linewidth = 1,color='black')
 
 def sinai_set(ax,W,H,D) :
+    ax.set_title(f"W = {W},H = {H} D = {D}")
     ax.plot(0, 0)
     ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
@@ -53,6 +55,7 @@ def sinai_set(ax,W,H,D) :
     plt.plot(sinai_circle_x,sinai_down_circle_y , linewidth = 1,color='black')
 
 def ellipse_set(ax,W,H) :
+    ax.set_title(f"W = {W},H = {H}")
     ax.plot(0, 0)
     ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
@@ -62,6 +65,23 @@ def ellipse_set(ax,W,H) :
 
     plt.plot(x,y,linewidth = 1,color='black')
     plt.plot(x,-y,linewidth = 1,color='black')
+
+def egg_set(ax,W_r,W_l,H) :
+    ax.set_title(f"W_r = {W_r},W_l = {W_l},H = {H}")
+    ax.plot(0, 0)
+    ax.set_xlim(-W_l /2 -1.0, W_r /2 + 1.0)
+    ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
+
+    x_l = np.linspace(-W_l /2 ,0 ,10000)
+    y_l = (H /2) * np.sqrt(1 - (x_l / (W_l / 2)) ** 2)
+    x_r = np.linspace(0 ,W_r/2 ,10000)
+    y_r = (H /2) * np.sqrt(1 - (x_r / (W_r / 2)) ** 2)
+
+    plt.plot(x_l,y_l,linewidth = 1,color='black')
+    plt.plot(x_l,-y_l,linewidth = 1,color='black')
+    
+    plt.plot(x_r,y_r,linewidth = 1,color='black')
+    plt.plot(x_r,-y_r,linewidth = 1,color='black')
 
     
 
@@ -105,3 +125,11 @@ def ellipse_poincare_map(ax,W,H):
     ax.plot(0, 0)
     ax.set_xlim(-(np.pi ), np.pi )
     ax.set_ylim(-(1 ), 1 )
+
+def egg_poincare_map(ax,W_r,W_l,H):
+    ax.set_title(f"W_r = {W_r},W_l = {W_l},H = {H}")
+    ax.axvline(x=np.pi/2,color = "red" ,linestyle="--")
+    ax.axvline(x=-np.pi/2,color = "red" ,linestyle="--")
+    ax.plot(0, 0)
+    ax.set_xlim(-np.pi , np.pi )
+    ax.set_ylim(-1 , 1 )
