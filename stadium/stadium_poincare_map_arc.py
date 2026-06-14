@@ -36,6 +36,9 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,color):
 
     for i in range(10000):
         intersection = find_intersection_reversion(p ,v ,W ,H)
+        if intersection is None:
+            ("交点が見つかりませんでした")
+            return
         reflected_v = find_reflect_direction(intersection ,v ,W)
 
         set_arc_length = get_arc_length(intersection,W,H)
