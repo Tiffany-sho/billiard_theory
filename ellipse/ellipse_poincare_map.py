@@ -15,10 +15,10 @@ from find_reflect_direction import find_reflect_direction
 from get_jacobian import get_jacobian
 
 # wall_width = 4.0
-# wall_height =2.0
+# wall_height =5.0
 
-# position_1 = np.array([-0.36 ,0.19])
-# velocity_1 = np.array([-0.76 , 0.04])
+# position_1 = np.array([-0.36 ,0.9])
+# velocity_1 = np.array([-0.06 , 0.06])
 
 # fig ,ax = plt.subplots()
 # ellipse_poincare_map(ax,wall_width,wall_height)

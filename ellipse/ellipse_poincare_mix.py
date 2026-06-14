@@ -9,7 +9,7 @@ from ellipse_poincare_map import create_poincare_dot
 from setting import ellipse_poincare_map,basic_colors
 
 wall_width = 4.0
-wall_height =2.0
+wall_height =3.0
 
 fig ,ax = plt.subplots()
 ellipse_poincare_map(ax,wall_width,wall_height)

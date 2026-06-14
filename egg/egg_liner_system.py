@@ -12,14 +12,14 @@ from setting import egg_set
 from find_intersection_func import find_intersection_func 
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 100
+max_frame = 1000
 
-wall_width_right = 3.0
-wall_width_left = 4.0
-wall_height =5.0
+wall_width_right = 2.0
+wall_width_left = 3.0
+wall_height =3.0
 
-position_1 = np.array([-0.36 ,0.9])
-velocity_1 = np.array([-0.06 , 0.06])
+position_1 = np.array([-0.16 ,0.45])
+velocity_1 = np.array([-0.06 , 0.04])
 
 
 def stadium_liner_system(initial_position,initial_velocity,W_r,W_l,H):
@@ -58,4 +58,4 @@ def stadium_liner_system(initial_position,initial_velocity,W_r,W_l,H):
     plt.show()
 
 
-stadium_liner_system(position_1,velocity_1,wall_width_right,wall_width_left,wall_height)
+# stadium_liner_system(position_1,velocity_1,wall_width_right,wall_width_left,wall_height)
