@@ -12,15 +12,14 @@ from setting import egg_set
 from find_intersection_func import find_intersection_func 
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 1000
+max_frame = 100
 
-wall_width_right = 2.0
-wall_width_left = 3.0
-wall_height =3.0
+wall_width_right = 8.0
+wall_width_left = 12.0
+wall_height =6.0
 
-position_1 = np.array([-0.16 ,0.45])
-velocity_1 = np.array([-0.06 , 0.04])
-
+position_1 = np.array([-5.6 , 1.04])
+velocity_1 = np.array([-0.0456  ,0.05])
 
 def stadium_liner_system(initial_position,initial_velocity,W_r,W_l,H):
 
@@ -32,10 +31,6 @@ def stadium_liner_system(initial_position,initial_velocity,W_r,W_l,H):
     def update(frame):
 
         intersection = find_intersection_func(position,velocity,W_r ,W_l, H)
-
-        if intersection is None:
-            print("交点が見つかりませんでした")
-            return
         plt.plot([intersection[0]],[intersection[1]] , "o",color = "black" ,ms = 3)
 
         ordit_x = np.linspace(intersection[0] ,position[0] ,100) if intersection[0] - position[0] != 0 else [position[0] for _ in range(100)]
@@ -58,4 +53,4 @@ def stadium_liner_system(initial_position,initial_velocity,W_r,W_l,H):
     plt.show()
 
 
-# stadium_liner_system(position_1,velocity_1,wall_width_right,wall_width_left,wall_height)
+stadium_liner_system(position_1,velocity_1,wall_width_right,wall_width_left,wall_height)

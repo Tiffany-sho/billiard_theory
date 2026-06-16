@@ -32,11 +32,8 @@ def create_poincare_dot(initial_position ,initial_velocity,W_r,W_l,H,color):
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for i in range(10000):
+    for i in range(5000):
         intersection = find_intersection_func(p ,v ,W_r,W_l ,H)
-        if intersection is None:
-            ("交点が見つかりませんでした")
-            return
         reflected_v = find_reflect_direction(intersection ,v ,W_r ,W_l ,H )
 
         set_arc_angle = np.arctan2(intersection[1],intersection[0])
@@ -66,7 +63,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W_r,W_l,H,color):
             break
         
 
-    plt.scatter(arc_angle,reflection_sin,s=0.1,c=color)
+    plt.scatter(arc_angle,reflection_sin,s=0.1,alpha=0.3, color=color)
     # fig.savefig(f"ellipse/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
 # create_poincare_dot(position_1,velocity_1,wall_width_right,wall_width_left,wall_height,"red" )
