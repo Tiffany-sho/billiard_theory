@@ -8,23 +8,28 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/egg'))
 
-from setting import egg_set
+from setting import egg_set,egg_poincare_map
+from egg_poincare_map import create_poincare_dot
 from find_intersection_func import find_intersection_func 
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 100
+max_frame = 50
 
-wall_width_right = 8.0
-wall_width_left = 12.0
-wall_height =6.0
 
-position_1 = np.array([-5.6 , 1.04])
-velocity_1 = np.array([-0.0456  ,0.05])
+wall_width_right = 3.0
+wall_width_left = 2.0
+wall_height =2.0
+
+position_1 = np.array([0.36,0.0])
+# velocity_1 = np.array([(np.random.rand() * 2 -1) / 100  , (np.random.rand() * 2 -1) / 100 ])
+velocity_1 = np.array([ 0.0001 , 0.007 ])
 
 def stadium_liner_system(initial_position,initial_velocity,W_r,W_l,H):
 
     fig ,ax = plt.subplots()
     egg_set(ax,W_r,W_l,H)
+    ax.set_aspect('equal')
+    plt.plot([initial_position[0]],[initial_position[1]] , "o",color = "black" ,ms = 3)
     position = initial_position.copy()
     velocity = initial_velocity.copy()
 
@@ -53,4 +58,12 @@ def stadium_liner_system(initial_position,initial_velocity,W_r,W_l,H):
     plt.show()
 
 
-stadium_liner_system(position_1,velocity_1,wall_width_right,wall_width_left,wall_height)
+def get_poincare_map(initial_position,initial_velocity,W_r,W_l,H):
+
+    fig ,ax = plt.subplots()
+    egg_poincare_map(ax,W_r,W_l,H)
+    create_poincare_dot(initial_position,initial_velocity,W_r,W_l,H,"red")
+    plt.show()
+
+get_poincare_map(position_1,velocity_1,wall_width_right,wall_width_left,wall_height)
+# stadium_liner_system(position_1,velocity_1,wall_width_right,wall_width_left,wall_height)

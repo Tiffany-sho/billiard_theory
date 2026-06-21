@@ -60,8 +60,13 @@ def find_intersection_func(point,velocity,W_r ,W_l , H) :
             right_t =np.inf
             if D_right >= 0 :
 
-                t1 = (- B_right -np.sign(B_right) * np.sqrt(B_right ** 2 - A_right * C_right)) / A_right
-                t2 = C_right / A_right / t1
+                if B_right == 0 :
+                    t1 = np.sqrt(- A_right * C_right) / A_right
+                    t2 = C_right / A_right / t1
+
+                else:
+                    t1 = (- B_right -np.sign(B_right) * np.sqrt(B_right ** 2 - A_right * C_right)) / A_right
+                    t2 = C_right / A_right / t1
 
                 valid_t = [t for t in (t1, t2) if t > 0]
                 if valid_t:
@@ -77,8 +82,13 @@ def find_intersection_func(point,velocity,W_r ,W_l , H) :
                     
             left_t =np.inf
             if D_left >= 0 :
-                t1 = (- B_left -np.sign(B_left) * np.sqrt(B_left ** 2 - A_left * C_left)) / A_left
-                t2 = C_left / A_left / t1
+                if B_left == 0 :
+                    t1 = np.sqrt(- A_left * C_left) / A_left
+                    t2 = C_left / A_left / t1
+
+                else:
+                    t1 = (- B_left -np.sign(B_left) * np.sqrt(B_left ** 2 - A_left * C_left)) / A_left
+                    t2 = C_left / A_left / t1
 
                 valid_t = [t for t in (t1, t2) if t > 0]
                 if valid_t:

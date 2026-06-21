@@ -12,14 +12,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__),'../func/egg'))
 from setting import egg_poincare_map
 from find_intersection_func import find_intersection_func
 from find_reflect_direction import find_reflect_direction
-# from get_jacobian import get_jacobian
+from get_jacobian import get_jacobian
 
-# wall_width_right = 4.0
-# wall_width_left = 2.0
+# wall_width_right = 2.0
+# wall_width_left = 4.0
 # wall_height =3.0
 
-# position_1 = np.array([-0.36 ,0.9])
-# velocity_1 = np.array([-0.06 , 0.06])
+# position_1 = np.array([0.00 ,0.02])
+# velocity_1 = np.array([0.03 , -0.02])
 
 # fig ,ax = plt.subplots()
 # egg_poincare_map(ax,wall_width_right,wall_width_left,wall_height)
@@ -32,13 +32,13 @@ def create_poincare_dot(initial_position ,initial_velocity,W_r,W_l,H,color):
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for i in range(5000):
+    for i in range(10000):
         intersection = find_intersection_func(p ,v ,W_r,W_l ,H)
         reflected_v = find_reflect_direction(intersection ,v ,W_r ,W_l ,H )
 
         set_arc_angle = np.arctan2(intersection[1],intersection[0])
 
-        # jacobian = get_jacobian(W,H,set_arc_angle)
+        # jacobian = get_jacobian(W_r,W_l,H,set_arc_angle)
         if intersection[0] == 0:
             n = np.array([0 , np.sign(v[1])])
         elif intersection[0] > 0:
@@ -63,7 +63,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W_r,W_l,H,color):
             break
         
 
-    plt.scatter(arc_angle,reflection_sin,s=0.1,alpha=0.3, color=color)
+    plt.scatter(arc_angle,reflection_sin,s=0.05, color=color)
     # fig.savefig(f"ellipse/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
 # create_poincare_dot(position_1,velocity_1,wall_width_right,wall_width_left,wall_height,"red" )

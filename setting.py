@@ -2,7 +2,18 @@ import numpy as np
 import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 
-basic_colors = [ 'g', 'r', 'c', 'm', 'y', 'k', 'w']
+basic_colors = [
+  "#FF0000", "#FF1C1C", "#FF3838", "#FF5555", "#FF7171", "#FF8D8D", "#FFAAAA", "#FFC6C6", "#FFE2E2", "#FF007F",
+  "#FF4500", "#FF5714", "#FF6928", "#FF7B3C", "#FF8D50", "#FF9F64", "#FFA500", "#D2691E", "#A0522D", "#8B4513",
+  "#FFD700", "#FFDB19", "#FFDF33", "#FFE34D", "#FFE766", "#FFEB80", "#FFEF99", "#FFF3B2", "#FFF7CC", "#FFFF00",
+  "#ADFF2F", "#A0F02A", "#93E225", "#86D320", "#79C51B", "#6CB616", "#5FA811", "#52990C", "#458B07", "#32CD32",
+  "#00FF00", "#00E600", "#00CC00", "#00B300", "#009900", "#008000", "#006600", "#004D00", "#003300", "#228B22",
+  "#00FA9A", "#00FF7F", "#20B2AA", "#2E8B57", "#3CB371", "#008B8B", "#008080", "#00CED1", "#48D1CC", "#40E0D0",
+  "#00FFFF", "#19FFFF", "#33FFFF", "#4DFFFF", "#66FFFF", "#80FFFF", "#87CEEB", "#87CEFA", "#00BFFF", "#1E90FF",
+  "#0000FF", "#0000E6", "#0000CC", "#0000B3", "#000099", "#000080", "#000066", "#4169E1", "#0000CD", "#00008B",
+  "#8A2BE2", "#9400D3", "#9932CC", "#8B008B", "#800080", "#4B0082", "#483D8B", "#6A5ACD", "#7B68EE", "#9370DB",
+  "#FF00FF", "#EE00EE", "#DD00DD", "#CC00CC", "#BB00BB", "#AA00AA", "#C71585", "#FF1493", "#FF69B4", "#DB7093"
+]
 
 def squre_set(ax,W,H) :
     ax.set_title(f"W = {W},H = {H}")
@@ -77,11 +88,23 @@ def egg_set(ax,W_r,W_l,H) :
     x_r = np.linspace(0 ,W_r/2 ,10000)
     y_r = (H /2) * np.sqrt(1 - (x_r / (W_r / 2)) ** 2)
 
+    focus_r = np.array([np.sqrt((W_r/2) ** 2 - (H/2) ** 2),0]) if W_r > H else np.array([[0 , 0],[np.sqrt(- (W_r/2) ** 2 + (H/2) ** 2) , -np.sqrt(- (W_r/2) ** 2 + (H/2) ** 2)]]) 
+    focus_l = np.array([-np.sqrt((W_l/2) ** 2 - (H/2) ** 2),0]) if W_l > H else np.array([0,np.sqrt(- (W_l/2) ** 2 + (H/2) ** 2)]) 
+
+    plt.scatter(focus_r[0],focus_r[1],s=10.0, color="blue")
+    plt.scatter(focus_l[0],focus_l[1],s=10.0, color="red")
+
     plt.plot(x_l,y_l,linewidth = 1,color='black')
     plt.plot(x_l,-y_l,linewidth = 1,color='black')
     
     plt.plot(x_r,y_r,linewidth = 1,color='black')
     plt.plot(x_r,-y_r,linewidth = 1,color='black')
+
+    plt.xlabel("x")
+    plt.ylabel("y")
+
+    plt.axhline(0, color='black', linewidth=1)
+    plt.axvline(0, color='black', linewidth=1)
 
     
 

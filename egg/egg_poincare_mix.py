@@ -13,21 +13,17 @@ from setting import egg_poincare_map,egg_set,basic_colors
 
 start_time = time.time()
 
-wall_width_right = 4.0
-wall_width_left = 6.0
-wall_height =7.0
+wall_width_right = 2.0
+wall_width_left = 11.0
+wall_height =6.0
+np.random.shuffle(basic_colors)
 
-epoch = 100
-
-c = np.linspace(0, 1, epoch)
-cmap = plt.get_cmap('turbo') 
-colors_rgba = cmap(c)
-
+epoch = 10
 epoch_per_sita = 2 * np.pi / epoch
 
 fig ,ax = plt.subplots()
-# egg_poincare_map(ax,wall_width_right,wall_width_left,wall_height)
-egg_set(ax,wall_width_right,wall_width_left,wall_height)
+egg_poincare_map(ax,wall_width_right,wall_width_left,wall_height)
+# egg_set(ax,wall_width_right,wall_width_left,wall_height)
 
 
 for i in range(0,epoch):
@@ -35,7 +31,7 @@ for i in range(0,epoch):
     position,velocity = create_setting(i,wall_width_right,wall_width_left,wall_height,epoch_per_sita)
     print(f"初期値:{position}")
     print(f"初速度:{velocity}")
-    create_poincare_dot(position,velocity,wall_width_right,wall_width_left,wall_height ,colors_rgba[i])
+    create_poincare_dot(position,velocity,wall_width_right,wall_width_left,wall_height ,basic_colors[i%100])
 
 end_time = time.time()
 print(f"処理時間: {end_time - start_time:.4f} 秒")

@@ -17,8 +17,8 @@ max_frame = 100
 wall_width = 4.0
 wall_height =2.0
 
-position_1 = np.array([-0.36 ,0.19])
-velocity_1 = np.array([-0.76 , 0.04])
+position_1 = np.array([-np.sqrt(3) ,0.0])
+velocity_1 = np.array([-0.06 , 0.14])
 
 def stadium_liner_system(initial_position,initial_velocity,W,H):
 
