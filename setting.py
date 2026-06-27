@@ -106,6 +106,43 @@ def egg_set(ax,W_r,W_l,H) :
     plt.axhline(0, color='black', linewidth=1)
     plt.axvline(0, color='black', linewidth=1)
 
+def egg_set_asy(ax,W_r,W_l,H,v) :
+    ax.set_title(f"W_r = {W_r},W_l = {W_l},H = {H}")
+    ax.plot(0, 0)
+    ax.set_xlim(-W_l /2 -1.0, W_r /2 + 1.0)
+    ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
+
+    x_l = np.linspace(-W_l /2 ,0 ,10000)
+    y_l = (H /2) * np.sqrt(1 - (x_l / (W_l / 2)) ** 2)
+    x_r = np.linspace(0 ,W_r/2 ,10000)
+    y_r = (H /2) * np.sqrt(1 - (x_r / (W_r / 2)) ** 2)
+
+    focus_r = np.array([np.sqrt((W_r/2) ** 2 - (H/2) ** 2),0]) if W_r > H else np.array([[0 , 0],[np.sqrt(- (W_r/2) ** 2 + (H/2) ** 2) , -np.sqrt(- (W_r/2) ** 2 + (H/2) ** 2)]]) 
+    focus_l = np.array([-np.sqrt((W_l/2) ** 2 - (H/2) ** 2),0]) if W_l > H else np.array([0,np.sqrt(- (W_l/2) ** 2 + (H/2) ** 2)]) 
+
+    x_asy_plus = np.linspace(-W_l /2 ,W_r /2 ,100)
+    y_asy_plus = v * x_asy_plus
+    x_asy_minus = np.linspace(-W_l /2 ,W_r /2 ,100)
+    y_asy_minus = -v * x_asy_minus
+
+    plt.scatter(focus_r[0],focus_r[1],s=10.0, color="blue")
+    plt.scatter(focus_l[0],focus_l[1],s=10.0, color="red")
+
+    plt.plot(x_l,y_l,linewidth = 1,color='black')
+    plt.plot(x_l,-y_l,linewidth = 1,color='black')
+    
+    plt.plot(x_r,y_r,linewidth = 1,color='black')
+    plt.plot(x_r,-y_r,linewidth = 1,color='black')
+
+    plt.plot(x_asy_plus,y_asy_plus,linewidth = 1,color='black')
+    plt.plot(x_asy_minus,y_asy_minus,linewidth = 1,color='black')
+
+    plt.xlabel("x")
+    plt.ylabel("y")
+
+    plt.axhline(0, color='black', linewidth=1)
+    plt.axvline(0, color='black', linewidth=1)
+
     
 
 def poincare_map_set(ax,W,H):

@@ -45,7 +45,7 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
     
     A = velocity[0] ** 2 + velocity[1] ** 2
     B = np.dot(velocity,point)
-    C = point[0] ** 2 + point[1] ** 2 - (D / 2)
+    C = point[0] ** 2 + point[1] ** 2 - (D / 2) ** 2
 
     if B ** 2 - A * C < 0 or (np.linalg.norm(point) - D / 2) <= 1e-10 :
         temp_intersection_x = W /2 if velocity[0] > 0 else -W /2
@@ -64,9 +64,14 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             return np.array([temp_intersection_x ,temp_intersection_y])
         
     else:
-        t1 =newton_method(A,2 * B,C,newton_method_range)
-        t2 =newton_method(A,2 * B,C,-newton_method_range)
+        if B == 0 :
+            t1 = np.sqrt(- A * C) / A
+            t2 = C / A / t1
 
+        else:
+            t1 = (- B -np.sign(B) * np.sqrt(B ** 2 - A * C)) / A
+            t2 = C / A / t1
+        
         valid_t = [t for t in (t1, t2) if t >= 0]
 
         if valid_t:
