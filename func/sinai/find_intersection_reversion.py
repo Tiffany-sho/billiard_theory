@@ -17,7 +17,7 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
     
     if velocity[0] == 0.0 :
         x = point[0]
-        if np.abs(x) > (W - D) /2  and np.abs(x) < W /2 : 
+        if np.abs(x) > D /2  and np.abs(x) < W /2 : 
             y = np.sign(velocity[1]) * H / 2
             return np.array([x,y])
         
@@ -31,7 +31,7 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
     
     if velocity[1] == 0.0 :
         y = point[1]
-        if np.abs(y) > (H - D) /2  and np.abs(y) < H /2 : 
+        if np.abs(y) > D /2  and np.abs(y) < H /2 : 
             x = np.sign(velocity[0]) * W / 2
             return np.array([x,y])
         
@@ -46,7 +46,7 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
     A = velocity[0] ** 2 + velocity[1] ** 2
     B = np.dot(velocity,point)
     C = point[0] ** 2 + point[1] ** 2 - (D / 2) ** 2
-
+    
     if B ** 2 - A * C < 0 or (np.linalg.norm(point) - D / 2) <= 1e-10 :
         temp_intersection_x = W /2 if velocity[0] > 0 else -W /2
         temp_intersection_tx =( temp_intersection_x - point[0] ) / velocity[0]

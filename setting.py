@@ -193,3 +193,17 @@ def egg_poincare_map(ax,W_r,W_l,H):
     ax.plot(0, 0)
     ax.set_xlim(-np.pi , np.pi )
     ax.set_ylim(-1 , 1 )
+
+def sinai_poincare_map(ax,W,H,D):
+    ax.set_title(f"W = {W},H = {H},D = {D}")
+    ax.plot(0, 0)
+    ax.set_xlim(0 , 4 * np.pi )
+    ax.set_ylim(-1 , 1 )
+
+def sinai_poincare_map_arc(ax,W,H,D):
+    ax.set_title(f"W = {W},H = {H},D = {D}")
+    ax.axvline(x= W + H,color = "red" ,linestyle="--")
+    ax.axvline(x=-(W + H),color = "red" ,linestyle="--")
+    ax.plot(0, 0)
+    ax.set_xlim(-(D * np.pi / 2 + W + H ) , (D * np.pi /2 + W + H) )
+    ax.set_ylim(-1 , 1 )

@@ -12,14 +12,14 @@ from setting import sinai_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 100
+max_frame = 10
 
 wall_width =5.0
 wall_height =5.0
-sinai_circle_diameter = 2.0
+sinai_circle_diameter = 0.0
 
-position_1 = np.array([0.01,2.0])
-velocity_1 = np.array([0.00, -0.05])
+position_1 = np.array([2.0,2.0])
+velocity_1 = np.array([0.4, -0.7])
 
 def sinai_liner_system(initial_position,initial_velocity,W,H,D):
 
