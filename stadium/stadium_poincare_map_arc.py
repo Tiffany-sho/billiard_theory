@@ -35,15 +35,10 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,color):
     v = initial_velocity.copy()
 
     for i in range(10000):
-        intersection = find_intersection_reversion(p ,v ,W ,H)
-        if intersection is None:
-            ("交点が見つかりませんでした")
-            return
-        reflected_v = find_reflect_direction(intersection ,v ,W)
 
-        set_arc_length = get_arc_length(intersection,W,H)
+        set_arc_length = get_arc_length(p,W,H)
 
-        n = get_normal_vector(intersection,W,H)
+        n = get_normal_vector(p,W,H)
 
         v_norm = v / np.linalg.norm(v)
 
@@ -52,6 +47,8 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,color):
         set_reflection_sin = cross_2d
 
 
+        intersection = find_intersection_reversion(p ,v ,W ,H)
+        reflected_v = find_reflect_direction(intersection ,v ,W)
         p = intersection
         v = reflected_v
         arc_length.append(set_arc_length)
@@ -62,7 +59,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,color):
             break
         
 
-    plt.scatter(arc_length,reflection_sin,s=0.1,c=color)
+    plt.scatter(arc_length,reflection_sin,s=0.05,c=color)
     # fig.savefig(f"stadium/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
 # create_poincare_dot(position_1,velocity_1,wall_width,wall_height ,"red")

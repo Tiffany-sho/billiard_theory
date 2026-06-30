@@ -12,13 +12,7 @@ from setting import stadium_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 1000
-
-wall_width = 0.0
-wall_height =2.0
-
-position_1 = np.array([-0.36 ,0.19])
-velocity_1 = np.array([-0.76 , 0.04])
+max_frame = 100
 
 def stadium_liner_system(initial_position,initial_velocity,W,H):
 
@@ -55,5 +49,3 @@ def stadium_liner_system(initial_position,initial_velocity,W,H):
     ax.set_aspect('equal')
     plt.show()
     print("処理終了")
-
-stadium_liner_system(position_1,velocity_1,wall_width,wall_height)

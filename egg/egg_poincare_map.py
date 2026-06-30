@@ -33,18 +33,16 @@ def create_poincare_dot(initial_position ,initial_velocity,W_r,W_l,H,color):
     v = initial_velocity.copy()
 
     for i in range(10000):
-        intersection = find_intersection_func(p ,v ,W_r,W_l ,H)
-        reflected_v = find_reflect_direction(intersection ,v ,W_r ,W_l ,H )
 
-        set_arc_angle = np.arctan2(intersection[1],intersection[0])
+        set_arc_angle = np.arctan2(p[1],p[0])
 
         # jacobian = get_jacobian(W_r,W_l,H,set_arc_angle)
-        if intersection[0] == 0:
+        if p[0] == 0:
             n = np.array([0 , np.sign(v[1])])
-        elif intersection[0] > 0:
-            n = np.array([ ((H /2) ** 2 * intersection[0]) ,(W_r /2) ** 2 * intersection[1]])
+        elif p[0] > 0:
+            n = np.array([ ((H /2) ** 2 * p[0]) ,(W_r /2) ** 2 * p[1]])
         else:
-            n = np.array([ ((H /2) ** 2 * intersection[0]) ,(W_l /2) ** 2 * intersection[1]])
+            n = np.array([ ((H /2) ** 2 * p[0]) ,(W_l /2) ** 2 * p[1]])
 
         n_norm = n / np.linalg.norm(n)
         v_norm = v / np.linalg.norm(v)
@@ -53,6 +51,8 @@ def create_poincare_dot(initial_position ,initial_velocity,W_r,W_l,H,color):
         
         set_reflection_sin = cross_2d 
 
+        intersection = find_intersection_func(p ,v ,W_r,W_l ,H)
+        reflected_v = find_reflect_direction(intersection ,v ,W_r ,W_l ,H )
         p = intersection
         v = reflected_v
         arc_angle.append(set_arc_angle)

@@ -34,23 +34,22 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,color):
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for i in range(0,100):
+    for i in range(0,10000):
 
-        intersection = find_intersection_reversion(p ,v ,W ,H)
-        reflected_v = find_reflect_direction(intersection ,v ,W)
+        set_collision_angle = np.arctan2(p[1] ,p[0])
+        n = get_normal_vector(p,W,H)
 
-        set_collision_angle = np.arctan2(intersection[1] ,intersection[0])
-        n = get_normal_vector(intersection,W,H)
-
-        jacobian = get_jacobian(intersection,W,H,set_collision_angle)
+        jacobian = get_jacobian(p,W,H,set_collision_angle)
 
         v_norm = v / np.linalg.norm(v)
 
         cross_2d = v_norm[0] * n[1] - v_norm[1] * n[0]
         
         set_reflection_sin = cross_2d * jacobian
-        set_reflection_sin = cross_2d
 
+
+        intersection = find_intersection_reversion(p ,v ,W ,H)
+        reflected_v = find_reflect_direction(intersection ,v ,W)
 
         p = intersection
         v = reflected_v

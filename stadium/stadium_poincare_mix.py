@@ -13,7 +13,7 @@ from get_arc_length import get_position
 
 
 
-wall_width = 0.0
+wall_width = 2.0
 wall_height =2.0
 
 sum_arc = 2 * wall_width + wall_height * np.pi
@@ -27,6 +27,6 @@ for i in range(0,50):
     velocity = np.array([(np.random.rand() *2 -1) / 100 ,(np.random.rand() *2 -1) / 100])
     print(f"初期値:{position}")
     print(f"初速度:{velocity}")
-    create_poincare_dot(position,velocity,wall_width,wall_height ,basic_colors[i%6])
+    create_poincare_dot(position,velocity,wall_width,wall_height ,basic_colors[i])
 
 plt.show()
