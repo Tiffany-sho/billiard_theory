@@ -16,16 +16,19 @@ from find_reflect_direction import find_reflect_direction
 max_frame_ordit = 100
 max_frame_poincare = 100
 
-wall_width_right = 10.0
-wall_width_left = 10.0
-wall_height =8.0
+wall_width_right = 2.0
+wall_width_left = 4.0
+wall_height =3.0
+
+position_1 = np.array([0.00 ,0.02])
+velocity_1 = np.array([0.03 , -0.02])
 
 focus_plus = np.sqrt((wall_width_right/2) ** 2 - (wall_height/2) ** 2)
 focus_minus = -np.sqrt((wall_width_right/2) ** 2 - (wall_height/2) ** 2)
 
 sita = np.random.rand() * 2 * np.pi - np.pi
-position_1 = np.array([2.0,0.0])
-velocity_1 = np.array([np.cos(sita) , np.sin(sita) ])
+position_1 = np.array([0.00 ,0.02])
+velocity_1 = np.array([0.03 , -0.02])
 # velocity_1 = np.array([0.000  ,np.sin(sita)/100 ])
 print(f"初期値:{position_1}")
 print(f"初速度:{velocity_1}")
@@ -51,11 +54,11 @@ def egg_liner_system(initial_position,initial_velocity,W_r,W_l,H):
 
         plt.plot(ordit_x,ordit_y,color = "black" ,linewidth = 1 ,alpha=0.1)
 
-        L_plus = (velocity[1] * focus_plus + velocity[0] * position[1] -velocity[1] * position[0]) / np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
-        L_minus = (velocity[1] * focus_minus + velocity[0] * position[1] -velocity[1] * position[0]) / np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
+        # L_plus = (velocity[1] * focus_plus + velocity[0] * position[1] -velocity[1] * position[0]) / np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
+        # L_minus = (velocity[1] * focus_minus + velocity[0] * position[1] -velocity[1] * position[0]) / np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
 
-        print(L_plus)
-        print(L_minus)
+        # print(L_plus)
+        # print(L_minus)
         position[:2] = intersection[:2]
         velocity[:2] = reflected_velocity[:2]
 

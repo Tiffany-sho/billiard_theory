@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/calcuate'))
 
 from egg_poincare_map import create_poincare_dot
-from create_setting import create_setting
+from create_setting import egg_create_setting
 from setting import egg_poincare_map,egg_set,basic_colors
 
 start_time = time.time()
@@ -28,7 +28,7 @@ egg_poincare_map(ax,wall_width_right,wall_width_left,wall_height)
 
 for i in range(0,epoch):
 
-    position,velocity = create_setting(i,wall_width_right,wall_width_left,wall_height,epoch_per_sita)
+    position,velocity = egg_create_setting(i,wall_width_right,wall_width_left,wall_height,epoch_per_sita)
     print(f"初期値:{position}")
     print(f"初速度:{velocity}")
     create_poincare_dot(position,velocity,wall_width_right,wall_width_left,wall_height ,basic_colors[i%100])

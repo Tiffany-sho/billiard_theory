@@ -207,3 +207,6 @@ def sinai_poincare_map_arc(ax,W,H,D):
     ax.plot(0, 0)
     ax.set_xlim(-(D * np.pi / 2 + W + H ) , (D * np.pi /2 + W + H) )
     ax.set_ylim(-1 , 1 )
+
+def occupancy_rate_gragh(ax):
+    ax.plot(0, 0)
