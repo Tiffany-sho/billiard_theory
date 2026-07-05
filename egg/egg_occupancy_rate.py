@@ -103,9 +103,6 @@ def create_poincare_occupany_area(W_r,W_l,H,bound_num):
 
 def order_bound_num_on_error(W_r,W_l,H,bound_num):
 
-    # fig_1,ax_1 = plt.subplots()
-    # occupancy_rate_gragh(ax_1)
-
     index ,x ,y = create_axis(position_1 ,velocity_1,W_r,W_l,H,bound_num)
 
     sum_squared_error = 0
@@ -135,11 +132,24 @@ def Shannon_entropy(W_r,W_l,H,bound_num):
                 continue
             shannon_entropy += (index[i][j] / bound_num) * np.log2(index[i][j] / bound_num)
     
-    # plt.scatter(bound_num , ave_sqrt_error ,c = "green",s = 5)
+    plt.scatter(bound_num , -shannon_entropy ,c = "green",s = 5)
     print(f"最大シャノンエントロピー:{-np.log2(part_area/all_area)}")
     print(f"衝突回数:{bound_num},シャノンエントロピー:{-shannon_entropy}")
 
-# create_poincare_occupany_area(wall_width_right,wall_width_left,wall_height,1000)
-Shannon_entropy(wall_width_right,wall_width_left,wall_height,1000000)
+def shannon_entropy_gragh(W_r,W_l,H):
 
-plt.show()
+    fig,ax = plt.subplots()
+    occupancy_rate_gragh(ax)
+
+    part_area = d_arc_length * d_reflected_sin
+    all_area =  range_arc * range_sin
+
+    for i in range(0,200):
+        Shannon_entropy(W_r,W_l,H,1000 + i * 100)
+    ax.axhline(y=-np.log2(part_area/all_area),color = "red" ,linestyle="--")
+    plt.show()
+
+shannon_entropy_gragh(wall_width_right,wall_width_left,wall_height)
+
+# create_poincare_occupany_area(wall_width_right,wall_width_left,wall_height,1000)
+# plt.show()
