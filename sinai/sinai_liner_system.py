@@ -12,7 +12,7 @@ from setting import sinai_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 10
+max_frame = 1000
 
 wall_width =5.0
 wall_height =5.0

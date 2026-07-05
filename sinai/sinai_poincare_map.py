@@ -16,10 +16,10 @@ from find_reflect_direction import find_reflect_direction
 
 wall_width =5.0
 wall_height =5.0
-sinai_circle_diameter = 1.0
+sinai_circle_diameter = 0.5
 
 position_1 = np.array([2.0,2.0])
-velocity_1 = np.array([0.01, -0.7])
+velocity_1 = np.array([0.4, -0.7])
 
 fig ,ax = plt.subplots()
 sinai_poincare_map(ax,wall_width,wall_height,sinai_circle_diameter)
@@ -57,8 +57,8 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
         arc_angle.append(set_arc_angle)
         reflection_sin.append(set_reflection_sin)
 
-        intersection = find_intersection_reversion(p ,v ,W ,H,D)
-        reflected_v = find_reflect_direction(intersection ,v ,W , H,D )
+        intersection = find_intersection_reversion(p ,v ,W ,H, D)
+        reflected_v = find_reflect_direction(intersection ,v ,W , H, D)
         p = intersection
         v = reflected_v
 

@@ -15,15 +15,15 @@ from find_reflect_direction import find_reflect_direction
 from get_n_vector_arc_length import get_n_vector_arc_length
 
 
-wall_width =5.0
-wall_height =5.0
-sinai_circle_diameter = 2.0
+# wall_width =5.0
+# wall_height =5.0
+# sinai_circle_diameter = 2.0
 
-position_1 = np.array([2.0,2.0])
-velocity_1 = np.array([0.4, -0.7])
+# position_1 = np.array([2.0,2.0])
+# velocity_1 = np.array([0.4, -0.7])
 
-fig ,ax = plt.subplots()
-sinai_poincare_map_arc(ax,wall_width,wall_height,sinai_circle_diameter)
+# fig ,ax = plt.subplots()
+# sinai_poincare_map_arc(ax,wall_width,wall_height,sinai_circle_diameter)
 
 def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
     arc_length = []
@@ -59,5 +59,5 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
     plt.scatter(arc_length,reflection_sin,s=0.05, color=color)
     # fig.savefig(f"ellipse/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")
 
-create_poincare_dot(position_1,velocity_1,wall_width,wall_height,sinai_circle_diameter,"red" )
-plt.show()
+# create_poincare_dot(position_1,velocity_1,wall_width,wall_height,sinai_circle_diameter,"red" )
+# plt.show()

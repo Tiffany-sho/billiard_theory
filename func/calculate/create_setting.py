@@ -77,3 +77,64 @@ def stadium_create_setting(i,W,H,epoch_per_arc):
 
     return position,velocity
 
+def sinai_create_setting(i,W,H,D,epoch_per_arc):
+    arc = np.random.rand() * epoch_per_arc  + epoch_per_arc * i - (W  + H + np.pi * D / 2)
+
+    if abs(arc) < H / 2 :
+        x = W / 2
+        y = arc
+    
+    elif abs(arc) < W + H / 2 :
+
+        if arc > 0 :
+            x = W / 2 - arc +  H / 2
+            y = H / 2
+
+        else:
+            x = W / 2 + arc + H / 2
+            y = -H / 2
+
+    elif abs(arc) < W + H :
+
+        if arc > 0:
+            x = - W / 2 
+            y = W + H - arc
+        else:
+            x = - W / 2 
+            y = -(W + H) - arc
+
+    else:
+        
+        if arc > 0:
+            circle_arc = arc - (W + H)
+
+        else:
+            circle_arc = arc + (W + H)
+        
+        angle = circle_arc / (D / 2)
+        x = D / 2 * np.cos(angle)
+        y = D / 2 * np.sin(angle)
+
+    position = np.array([x, y])
+
+    if abs(np.linalg.norm(position) - D / 2) < 1e-10:
+        n = np.array([ position[0],  position[1]])
+        n_norm = np.linalg.norm(n)
+        n_hat = n / n_norm
+        
+    elif abs(position[0]) == W /2 and abs(position[1]) == H /2:
+        n_hat = np.array([- np.sign(position[0]) , - np.sign(position[1])])
+    elif abs(position[0] ) == W /2:
+        n_hat = np.array([-np.sign(position[0]) , 0])
+    else:
+        n_hat = np.array([0 ,- np.sign(position[1])])
+
+    normal_angle = np.arctan2(n_hat[1], n_hat[0])
+
+    phi = np.random.rand() * np.pi - np.pi / 2
+
+    vx = np.cos(normal_angle + phi) 
+    vy = np.sin(normal_angle + phi)
+    velocity = np.array([vx / 100, vy / 100])
+
+    return position,velocity
