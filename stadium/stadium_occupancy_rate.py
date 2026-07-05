@@ -18,19 +18,19 @@ from get_arc_length import get_arc_length
 from create_setting import stadium_create_setting
 
 wall_width =1.0
-wall_height =2.0
+wall_height =3.0
 
 range_sin = 2.0
 range_arc = 2 * (wall_width  + wall_height * np.pi / 2)
 
 
-# position_1,velocity_1 = stadium_create_setting(0,wall_width,wall_height,range_arc)
-position_1 = np.array([0.37462786 ,1. ])
-velocity_1 = np.array([ -0.00594382 ,-0.00804183])
+position_1,velocity_1 = stadium_create_setting(0,wall_width,wall_height,range_arc)
+# position_1 = np.array([0.37462786 ,1. ])
+# velocity_1 = np.array([ -0.00594382 ,-0.00804183])
 print(position_1,velocity_1)
 
-divide_sin = 100
-divide_arc = 100
+divide_sin = 50
+divide_arc = 50
 
 d_reflected_sin = range_sin / divide_sin
 d_arc_length = range_arc / divide_arc
@@ -131,11 +131,25 @@ def Shannon_entropy(W,H,bound_num):
                 continue
             shannon_entropy += (index[i][j] / bound_num) * np.log2(index[i][j] / bound_num)
     
-    # plt.scatter(bound_num , ave_sqrt_error ,c = "green",s = 5)
+    plt.scatter(bound_num , -shannon_entropy ,c = "green",s = 5)
     print(f"最大シャノンエントロピー:{-np.log2(part_area/all_area)}")
     print(f"衝突回数:{bound_num},シャノンエントロピー:{-shannon_entropy}")
 
-# create_poincare_occupany_area(wall_width,wall_height,1000)
-Shannon_entropy(wall_width,wall_height,1000000)
+# create_poincare_occupany_area(wall_width,wall_height,10000)
+
+def shannon_entropy_gragh(W,H):
+
+    fig,ax = plt.subplots()
+    occupancy_rate_gragh(ax)
+
+    part_area = d_arc_length * d_reflected_sin
+    all_area =  range_arc * range_sin
+
+    for i in range(0,200):
+        Shannon_entropy(W,H,1000 + i * 100)
+    ax.axhline(y=-np.log2(part_area/all_area),color = "red" ,linestyle="--")
+    plt.show()
+
+shannon_entropy_gragh(wall_width,wall_height)
 
 plt.show()
