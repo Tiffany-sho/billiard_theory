@@ -38,11 +38,6 @@ def stadium_liner_system(initial_position,initial_velocity,W,H):
         reflected_velocity = find_reflect_direction(position,velocity,W)
         velocity[:2] = reflected_velocity[:2]
 
-        if  frame != 0 and np.allclose(position[0] , position[:2]) and np.allclose(velocity[0] , velocity[:2]): 
-            print(f"起動周期性あり。{frame}回衝突")
-            frame = max_frame
-        
-
     ani = FuncAnimation(fig, update, frames=max_frame, interval=1 ,repeat=False)
 
 

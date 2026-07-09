@@ -202,10 +202,9 @@ def sinai_poincare_map(ax,W,H,D):
 
 def sinai_poincare_map_arc(ax,W,H,D):
     ax.set_title(f"W = {W},H = {H},D = {D}")
-    ax.axvline(x= W + H,color = "red" ,linestyle="--")
-    ax.axvline(x=-(W + H),color = "red" ,linestyle="--")
+    ax.axvline(x= 2 * (W + H),color = "red" ,linestyle="--")
     ax.plot(0, 0)
-    ax.set_xlim(-(D * np.pi / 2 + W + H ) , (D * np.pi /2 + W + H) )
+    ax.set_xlim(0 , 2 * (D * np.pi /2 + W + H) )
     ax.set_ylim(-1 , 1 )
 
 def occupancy_rate_gragh(ax):

@@ -12,14 +12,14 @@ from setting import sinai_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 1000
+max_frame = 48
 
-wall_width =5.0
-wall_height =5.0
-sinai_circle_diameter = 0.0
+# wall_width =5.0
+# wall_height =5.0
+# sinai_circle_diameter = 1.0
 
-position_1 = np.array([2.0,2.0])
-velocity_1 = np.array([0.4, -0.7])
+# position_1 = np.array([0.5,0.0])
+# velocity_1 = np.array([0.1 ,0.75])
 
 def sinai_liner_system(initial_position,initial_velocity,W,H,D):
 
@@ -45,10 +45,6 @@ def sinai_liner_system(initial_position,initial_velocity,W,H,D):
         reflected_velocity = find_reflect_direction(position,velocity,W, H ,D)
         velocity[:2] = reflected_velocity[:2]
 
-        if  frame != 0 and np.allclose(position[0] , position[:2]) and np.allclose(velocity[0] , velocity[:2]): 
-            print(f"起動周期性あり。{frame}回衝突")
-            frame = max_frame
-
 
     ani = FuncAnimation(fig, update, frames=max_frame, interval=100 ,repeat=False)
 
@@ -56,4 +52,4 @@ def sinai_liner_system(initial_position,initial_velocity,W,H,D):
     plt.show()
 
 
-sinai_liner_system(position_1,velocity_1,wall_width,wall_height,sinai_circle_diameter)
+# sinai_liner_system(position_1,velocity_1,wall_width,wall_height,sinai_circle_diameter)

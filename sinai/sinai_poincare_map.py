@@ -16,10 +16,10 @@ from find_reflect_direction import find_reflect_direction
 
 wall_width =5.0
 wall_height =5.0
-sinai_circle_diameter = 0.5
+sinai_circle_diameter = 1.0
 
-position_1 = np.array([2.0,2.0])
-velocity_1 = np.array([0.4, -0.7])
+position_1 = np.array([0.5,0.0])
+velocity_1 = np.array([0.1 ,0.5])
 
 fig ,ax = plt.subplots()
 sinai_poincare_map(ax,wall_width,wall_height,sinai_circle_diameter)
@@ -31,7 +31,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for i in range(10000):
+    for i in range(100000):
 
 
         # jacobian = get_jacobian(W_r,W_l,H,set_arc_angle)
@@ -61,11 +61,6 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
         reflected_v = find_reflect_direction(intersection ,v ,W , H, D)
         p = intersection
         v = reflected_v
-
-        if  i != 0 and np.allclose(arc_angle[0] , set_arc_angle) and np.allclose(reflection_sin[0] , set_reflection_sin): 
-            print(f"起動周期性あり。{i}回衝突")
-            break
-        
 
     plt.scatter(arc_angle,reflection_sin,s=0.05, color=color)
     # fig.savefig(f"ellipse/graph_data/poincare_depend_w_h_arc/poincare_{W,H}.png")

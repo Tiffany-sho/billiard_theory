@@ -6,11 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../calculate'))
 
-from newton_method import newton_method
-
 def find_intersection_reversion(point ,velocity ,W ,H ,D) :
-
-    newton_method_range = np.sqrt(W ** 2 + H ** 2) / np.linalg.norm(velocity)
 
     if velocity[0] == 0.0 and velocity[1] == 0.0 :
         return point.copy()
@@ -46,8 +42,8 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
     A = velocity[0] ** 2 + velocity[1] ** 2
     B = np.dot(velocity,point)
     C = point[0] ** 2 + point[1] ** 2 - (D / 2) ** 2
-    
-    if B ** 2 - A * C < 0 or (np.linalg.norm(point) - D / 2) <= 1e-10 :
+
+    if B ** 2 - A * C <= 0 or B >= 0.0 :
         temp_intersection_x = W /2 if velocity[0] > 0 else -W /2
         temp_intersection_tx =( temp_intersection_x - point[0] ) / velocity[0]
 
@@ -64,6 +60,7 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             return np.array([temp_intersection_x ,temp_intersection_y])
         
     else:
+        print("円状交点")
         if B == 0 :
             t1 = np.sqrt(- A * C) / A
             t2 = C / A / t1
@@ -79,4 +76,6 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             if (np.linalg.norm(point + right_t * velocity) - D / 2) > 1e-10:
                 print("交点未発見エラー")
                 right_t = np.inf
-            return point + right_t * velocity
+            hit = point + right_t * velocity
+            hit *= (D / 2) / np.linalg.norm(hit)
+            return hit
