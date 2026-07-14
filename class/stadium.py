@@ -6,21 +6,9 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.join(os.path.dirname(__file__),'../func/stadium'))
 
 from setting import stadium_set,stadium_poincare_map_arc_set
-from find_intersection_reversion import find_intersection_reversion
-from find_reflect_direction import find_reflect_direction
-from get_normal_vector import get_normal_vector
-from get_arc_length import get_arc_length
-
-max_frame = 10000
-
-wall_width =5.0
-wall_height =5.0
-
-position_1 = np.array([0.5,0.0])
-velocity_1 = np.array([10.1 ,0.1])
+from stadium_func import find_intersection_reversion ,find_reflect_direction ,get_arc_length ,get_normal_vector
 
 class Stadium:
     def __init__(self ,position ,velocity ,W ,H ,bound_num):
@@ -172,7 +160,3 @@ class Stadium:
         plt.scatter(np.log2(self.bound_num) , -shannon_entropy ,c = "green",s = 5)
         print(f"最大シャノンエントロピー:{-np.log2(part_area/all_area)}")
         print(f"衝突回数:{self.bound_num},シャノンエントロピー:{-shannon_entropy}")
-
-stadium_1 = Stadium(position_1,velocity_1,wall_width,wall_height,10000)
-
-stadium_1.shannon_entropy(50)

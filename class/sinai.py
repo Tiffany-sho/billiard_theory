@@ -6,12 +6,9 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.join(os.path.dirname(__file__),'../func/sinai'))
 
 from setting import sinai_set,sinai_poincare_map_arc
-from find_intersection_reversion import find_intersection_reversion
-from find_reflect_direction import find_reflect_direction
-from get_n_vector_arc_length import get_n_vector_arc_length
+from sinai_func import find_intersection_reversion ,find_reflect_direction ,get_n_vector_arc_length
 
 class Sinai:
     def __init__(self ,position ,velocity ,W ,H ,D ,bound_num):

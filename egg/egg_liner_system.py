@@ -36,7 +36,6 @@ print(f"初速度:{velocity_1}")
 def egg_liner_system(initial_position,initial_velocity,W_r,W_l,H):
 
     fig ,ax = plt.subplots()
-    # egg_set_asy(ax,W_r,W_l,H, np.sqrt(5) / 2)
     egg_set(ax,W_r,W_l,H)
     ax.set_aspect('equal')
     plt.plot([initial_position[0]],[initial_position[1]] , "o",color = "black" ,ms = 3)
