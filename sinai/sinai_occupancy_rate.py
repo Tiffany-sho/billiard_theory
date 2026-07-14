@@ -68,7 +68,7 @@ def create_axis(initial_position ,initial_velocity,W,H,D,bound_num):
         arc_length_sign = 1 if set_arc_length >= 0 else 0
 
         reflected_sin_index = - int(set_reflection_sin / d_reflected_sin + reflected_sin_sign) +  int( divide_sin / 2 ) 
-        arc_length_index =  int(set_arc_length / d_arc_length + arc_length_sign) + int( divide_arc / 2) - 1
+        arc_length_index =  int(set_arc_length / d_arc_length + arc_length_sign) - 1
 
         occupancy_index[reflected_sin_index][arc_length_index] += 1
 
@@ -81,7 +81,7 @@ def create_poincare_occupany_area(W,H,D,bound_num):
 
     index ,x ,y = create_axis(position_1 ,velocity_1,W,H,D,bound_num)
 
-    plt.scatter(x,y,s=1,c="red")
+    plt.scatter(x,y,s=1,c="black")
 
     max_value = index.max()
     
@@ -89,12 +89,13 @@ def create_poincare_occupany_area(W,H,D,bound_num):
         range_sin_min = range_sin / 2 - d_reflected_sin * i
         range_sin_max = range_sin / 2 - d_reflected_sin * (i + 1)
         for j in range(0,divide_arc):
-            range_arc_min = - range_arc / 2 + d_arc_length* j
-            range_arc_max = - range_arc / 2 + d_arc_length * (j + 1)
+            range_arc_min = d_arc_length* j
+            range_arc_max = d_arc_length * (j + 1)
 
             alpha = index[i][j] / max_value
-            plt.fill_between([range_arc_min, range_arc_max],range_sin_min, range_sin_max, color="green", alpha=alpha)
 
+            plt.fill_between([range_arc_min, range_arc_max],range_sin_min, range_sin_max, color="green", alpha=alpha)
+    plt.show()
 
 def order_bound_num_on_error(W,H,D,bound_num):
 
@@ -133,7 +134,7 @@ def Shannon_entropy(W,H,D,bound_num):
     print(f"最大シャノンエントロピー:{-np.log2(part_area/all_area)}")
     print(f"衝突回数:{bound_num},シャノンエントロピー:{-shannon_entropy}")
 
-# create_poincare_occupany_area(wall_width,wall_height,sinai_circle_diameter,10000)
+create_poincare_occupany_area(wall_width,wall_height,sinai_circle_diameter,100000)
 
 def shannon_entropy_gragh(W,H,D):
 
@@ -148,4 +149,4 @@ def shannon_entropy_gragh(W,H,D):
     ax.axhline(y=-np.log2(part_area/all_area),color = "red" ,linestyle="--")
     plt.show()
 
-shannon_entropy_gragh(wall_width,wall_height,sinai_circle_diameter)
+# shannon_entropy_gragh(wall_width,wall_height,sinai_circle_diameter)

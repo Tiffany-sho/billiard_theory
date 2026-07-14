@@ -19,8 +19,8 @@ from get_arc_length import get_arc_length
 wall_width =2.0
 wall_height =2.0
 
-position_1 = np.array([2.0 ,0.0])
-velocity_1 = np.array([-0.1, 0.05])
+position_1 = np.array([0.0 ,0.5*np.sqrt(2)])
+velocity_1 = np.array([-100, 0])
 
 bound_num = 100
 

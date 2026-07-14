@@ -60,7 +60,7 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             return np.array([temp_intersection_x ,temp_intersection_y])
         
     else:
-        print("円状交点")
+        # print("円状交点")
         if B == 0 :
             t1 = np.sqrt(- A * C) / A
             t2 = C / A / t1

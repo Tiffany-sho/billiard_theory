@@ -15,16 +15,17 @@ from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 from get_n_vector_arc_length import get_n_vector_arc_length
 
+max_frame = 10000
 
 wall_width =5.0
 wall_height =5.0
 sinai_circle_diameter = 1.0
 
 position_1 = np.array([0.5,0.0])
-velocity_1 = np.array([0.1 ,0.2])
+velocity_1 = np.array([10.1 ,0.1])
 
-# fig ,ax = plt.subplots()
-# sinai_poincare_map_arc(ax,wall_width,wall_height,sinai_circle_diameter)
+fig ,ax = plt.subplots()
+sinai_poincare_map_arc(ax,wall_width,wall_height,sinai_circle_diameter)
 
 def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
     arc_length = []
@@ -33,7 +34,7 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for i in range(50):
+    for i in range(max_frame):
 
         set_arc_length ,n= get_n_vector_arc_length(p,W,H,D)
 
@@ -46,19 +47,17 @@ def create_poincare_dot(initial_position ,initial_velocity,W,H,D,color):
 
         arc_length.append(set_arc_length)
         reflection_sin.append(set_reflection_sin)
-        print(f"arc:{set_arc_length}")
-        print(f"sinφ:{set_reflection_sin}")
-        print("------------------------")
+        # print(f"衝突回数:{i+1},arc:{set_arc_length},sinφ:{set_reflection_sin}")
+        # print("------------------------")
 
         intersection = find_intersection_reversion(p ,v ,W ,H,D)
         reflected_v = find_reflect_direction(intersection ,v ,W , H,D )
+        print(f"位置:{intersection},速度:{reflected_v}")
         p = intersection
         v = reflected_v
-
         
-
-    # plt.scatter(arc_length,reflection_sin,s=0.05, color=color)
+    plt.scatter(arc_length,reflection_sin,s=0.05, color=color)
 
 create_poincare_dot(position_1,velocity_1,wall_width,wall_height,sinai_circle_diameter,"red" )
-sinai_liner_system(position_1,velocity_1,wall_width,wall_height,sinai_circle_diameter)
-# plt.show()
+# sinai_liner_system(position_1,velocity_1,wall_width,wall_height,sinai_circle_diameter,max_frame)
+plt.show()

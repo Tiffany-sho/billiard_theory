@@ -15,16 +15,16 @@ from find_reflect_direction import find_reflect_direction
 
 wall_width =5.0
 wall_height =5.0
-sinai_circle_diameter = 0.0
+sinai_circle_diameter = 1.0
 
 fig ,ax = plt.subplots()
 sinai_set(ax,wall_width,wall_height,sinai_circle_diameter)
 
 
-position_1 = np.array([2.5,0.5])
-position_2 = np.array([2.5,0.5])
-velocity_1 = np.array([-0.5 ,0.3])
-velocity_2 = np.array([-0.5 ,0.300001])
+position_1 = np.array([2.5,0.0])
+position_2 = np.array([2.5,0.0])
+velocity_1 = np.array([-0.5 ,0.5])
+velocity_2 = np.array([-0.5 ,0.500000001])
 
 dot_1, = plt.plot([] ,[] , "o" , color = "black" ,ms = 3)
 dot_2, = plt.plot([] ,[] , "o" , color = "red" ,ms = 3)
@@ -38,7 +38,7 @@ def create_ordit_dot(initial_position ,initial_velocity):
     p = initial_position.copy()
     v = initial_velocity.copy()
 
-    for _ in range(100):
+    for _ in range(50):
         intersection = find_intersection_reversion(p ,v ,wall_width ,wall_height,sinai_circle_diameter)
         intersections.append(intersection.copy())
         v = find_reflect_direction(intersection ,v ,wall_width,wall_height,sinai_circle_diameter)
@@ -81,7 +81,7 @@ def update(frame):
     return dot_1, dot_2
 
 
-ani = FuncAnimation(fig, update, frames=frame_num, interval=10 ,repeat=False ,blit=True)
+ani = FuncAnimation(fig, update, frames=frame_num, interval=5.0 ,repeat=False ,blit=True)
 
 ax.set_aspect('equal')
 plt.show()

@@ -12,8 +12,6 @@ from setting import sinai_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
-max_frame = 48
-
 # wall_width =5.0
 # wall_height =5.0
 # sinai_circle_diameter = 1.0
@@ -21,7 +19,7 @@ max_frame = 48
 # position_1 = np.array([0.5,0.0])
 # velocity_1 = np.array([0.1 ,0.75])
 
-def sinai_liner_system(initial_position,initial_velocity,W,H,D):
+def sinai_liner_system(initial_position,initial_velocity,W,H,D,max_frame):
 
     fig ,ax = plt.subplots()
     sinai_set(ax,W,H,D)
@@ -44,9 +42,10 @@ def sinai_liner_system(initial_position,initial_velocity,W,H,D):
         position[:2] = intersection[:2]
         reflected_velocity = find_reflect_direction(position,velocity,W, H ,D)
         velocity[:2] = reflected_velocity[:2]
+        print(f"位置:{intersection},速度:{reflected_velocity}")
 
 
-    ani = FuncAnimation(fig, update, frames=max_frame, interval=100 ,repeat=False)
+    ani = FuncAnimation(fig, update, frames=max_frame-2, interval=100 ,repeat=False)
 
     ax.set_aspect('equal')
     plt.show()
