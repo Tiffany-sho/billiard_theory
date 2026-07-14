@@ -6,20 +6,28 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.join(os.path.dirname(__file__),'../func/sinai'))
+sys.path.append(os.path.join(os.path.dirname(__file__),'../func/stadium'))
 
-from setting import sinai_set,sinai_poincare_map_arc
+from setting import stadium_set,stadium_poincare_map_arc_set
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
-from get_n_vector_arc_length import get_n_vector_arc_length
+from get_normal_vector import get_normal_vector
+from get_arc_length import get_arc_length
 
-class Sinai:
-    def __init__(self ,position ,velocity ,W ,H ,D ,bound_num):
+max_frame = 10000
+
+wall_width =5.0
+wall_height =5.0
+
+position_1 = np.array([0.5,0.0])
+velocity_1 = np.array([10.1 ,0.1])
+
+class Stadium:
+    def __init__(self ,position ,velocity ,W ,H ,bound_num):
         self.positions = [position.copy()]
         self.velocities = [velocity.copy()]
         self.width = W
         self.height = H
-        self.dismeter = D
         self.bound_num = bound_num
 
         p = position.copy()
@@ -27,22 +35,22 @@ class Sinai:
 
         for _ in range(bound_num):
 
-            intersection = find_intersection_reversion(p ,v ,W , H ,D )
+            intersection = find_intersection_reversion(p ,v ,W , H )
             p[:2] = intersection[:2]
-            reflected_velocity = find_reflect_direction(p ,v ,W , H ,D )
+            reflected_velocity = find_reflect_direction(p ,v ,W  )
             v[:2] = reflected_velocity[:2]
 
             self.positions.append(p.copy())
             self.velocities.append(v.copy())
 
         self.range_sin = 2.0
-        self.range_arc = 2 * (W  + H + np.pi * D / 2)
+        self.range_arc = 2 * (W  + H / 2 * np.pi )
 
 
     def liner(self):
 
         fig ,ax = plt.subplots()
-        sinai_set(ax ,self.width ,self.height ,self.dismeter )
+        stadium_set(ax ,self.width ,self.height )
 
         p_x = []
         p_y = []
@@ -68,21 +76,22 @@ class Sinai:
     def poincare(self,color):
 
         fig ,ax = plt.subplots()
-        sinai_poincare_map_arc(ax,self.width ,self.height ,self.dismeter )
+        stadium_poincare_map_arc_set(ax,self.width ,self.height )
 
         arc_length = []
         reflection_sin = []
         
         for i in range(self.bound_num):
 
-            set_arc_length ,n= get_n_vector_arc_length(self.positions[i],self.width ,self.height ,self.dismeter )
+            set_arc_length = get_arc_length(self.positions[i],self.width,self.height)
 
-            n_norm = n / np.linalg.norm(n)
+            n = get_normal_vector(self.positions[i],self.width,self.height)
+
             v_norm = self.velocities[i] / np.linalg.norm(self.velocities[i])
 
-            cross_2d = v_norm[0] * n_norm[1] - v_norm[1] * n_norm[0]
+            cross_2d = v_norm[0] * n[1] - v_norm[1] * n[0]
             
-            set_reflection_sin = cross_2d 
+            set_reflection_sin = cross_2d
 
             arc_length.append(set_arc_length)
             reflection_sin.append(set_reflection_sin)
@@ -99,20 +108,21 @@ class Sinai:
         
         for i in range(self.bound_num):
 
-            set_arc_length ,n= get_n_vector_arc_length(self.positions[i],self.width ,self.height ,self.dismeter )
+            set_arc_length = get_arc_length(self.positions[i],self.width,self.height)
 
-            n_norm = n / np.linalg.norm(n)
+            n = get_normal_vector(self.positions[i],self.width,self.height)
+
             v_norm = self.velocities[i] / np.linalg.norm(self.velocities[i])
 
-            cross_2d = v_norm[0] * n_norm[1] - v_norm[1] * n_norm[0]
+            cross_2d = v_norm[0] * n[1] - v_norm[1] * n[0]
             
-            set_reflection_sin = cross_2d 
+            set_reflection_sin = cross_2d
 
             reflected_sin_sign = 1 if set_reflection_sin >= 0 else 0
             arc_length_sign = 1 if set_arc_length >= 0 else 0
 
             reflected_sin_index = - int(set_reflection_sin / d_reflected_sin + reflected_sin_sign) +  int( divide / 2 ) 
-            arc_length_index =  int(set_arc_length / d_arc_length + arc_length_sign) - 1
+            arc_length_index =  int(set_arc_length / d_arc_length + arc_length_sign) + int( divide / 2) - 1
             
             occupancy_index[reflected_sin_index][arc_length_index] += 1
 
@@ -121,7 +131,7 @@ class Sinai:
     def paint_occupany_area(self,divide):
 
         fig_1,ax_1 = plt.subplots()
-        sinai_poincare_map_arc(ax_1,wall_width,wall_height,sinai_circle_diameter)
+        stadium_poincare_map_arc_set(ax_1,wall_width,wall_height)
 
         d_reflected_sin = self.range_sin / divide
         d_arc_length = self.range_arc / divide
@@ -134,8 +144,8 @@ class Sinai:
             range_sin_min = self.range_sin / 2 - d_reflected_sin * i
             range_sin_max = self.range_sin / 2 - d_reflected_sin * (i + 1)
             for j in range(0,divide):
-                range_arc_min = d_arc_length* j
-                range_arc_max = d_arc_length * (j + 1)
+                range_arc_min = - self.range_arc / 2 + d_arc_length* j
+                range_arc_max = - self.range_arc / 2 + d_arc_length * (j + 1)
 
                 alpha = index[i][j] / max_value
                 plt.fill_between([range_arc_min, range_arc_max],range_sin_min, range_sin_max, color="green", alpha=alpha)
@@ -162,3 +172,7 @@ class Sinai:
         plt.scatter(np.log2(self.bound_num) , -shannon_entropy ,c = "green",s = 5)
         print(f"最大シャノンエントロピー:{-np.log2(part_area/all_area)}")
         print(f"衝突回数:{self.bound_num},シャノンエントロピー:{-shannon_entropy}")
+
+stadium_1 = Stadium(position_1,velocity_1,wall_width,wall_height,10000)
+
+stadium_1.shannon_entropy(50)
