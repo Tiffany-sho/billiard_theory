@@ -63,9 +63,6 @@ class Stadium:
 
     def poincare(self,color):
 
-        fig ,ax = plt.subplots()
-        stadium_poincare_map_arc_set(ax,self.width ,self.height )
-
         arc_length = []
         reflection_sin = []
         
@@ -85,7 +82,6 @@ class Stadium:
             reflection_sin.append(set_reflection_sin)
 
         plt.scatter(arc_length,reflection_sin,s=0.05, color=color)
-        plt.show()
 
     def create_occupany_area(self,divide):
 
