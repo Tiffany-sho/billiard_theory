@@ -2,8 +2,6 @@ import numpy as np
 
 def find_intersection_func(point,velocity,W_r ,W_l , H) :
 
-    newton_method_range = np.sqrt((W_r / 2 + W_l / 2 + H) ** 2 + H ** 2) / np.linalg.norm(velocity)
-
     if velocity[0] == 0 and velocity[1] == 0 :
         return point.copy()
     
