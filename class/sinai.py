@@ -64,9 +64,6 @@ class Sinai:
 
     def poincare(self,color):
 
-        fig ,ax = plt.subplots()
-        sinai_poincare_map_arc(ax,self.width ,self.height ,self.dismeter )
-
         arc_length = []
         reflection_sin = []
         
@@ -81,11 +78,12 @@ class Sinai:
             
             set_reflection_sin = cross_2d 
 
+            print(f"arc:{set_arc_length},sinφ:{set_reflection_sin}")
+
             arc_length.append(set_arc_length)
             reflection_sin.append(set_reflection_sin)
 
         plt.scatter(arc_length,reflection_sin,s=0.05, color=color)
-        plt.show()
 
     def create_occupany_area(self,divide):
 
@@ -118,7 +116,7 @@ class Sinai:
     def paint_occupany_area(self,divide):
 
         fig_1,ax_1 = plt.subplots()
-        sinai_poincare_map_arc(ax_1,wall_width,wall_height,sinai_circle_diameter)
+        sinai_poincare_map_arc(ax_1,self.width,self.height,self.dismeter)
 
         d_reflected_sin = self.range_sin / divide
         d_arc_length = self.range_arc / divide
