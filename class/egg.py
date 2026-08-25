@@ -38,23 +38,25 @@ class Egg:
         fig ,ax = plt.subplots()
         egg_set(ax ,self.width_right ,self.width_left ,self.height )
 
-        p_x = []
-        p_y = []
-        for i in range(len(self.positions)):
+        # 高速化(2026-08-25): 以前は for ループで1点ずつ append していた。
+        #   positions は (bound_num + 1, 2) の配列そのものなので、まとめて取り出す。
+        p = np.asarray(self.positions)
+        p_x = p[:, 0]
+        p_y = p[:, 1]
 
-            p_x.append(self.positions[i][0])
-            p_y.append(self.positions[i][1])
-
-        
         def update(frame):
             plt.plot([p_x[frame]],[p_y[frame]] , "o",color = "black" ,ms = 3)
-            ordit_x = np.linspace(p_x[frame] ,p_x[frame + 1] ,100) if p_x[frame] - p_x[frame + 1] != 0 else [p_x[frame + 1] for _ in range(100)]
-            ordit_y = np.linspace(p_y[frame] ,p_y[frame + 1] ,100) if p_y[frame] - p_y[frame + 1] != 0 else [p_y[frame + 1] for _ in range(100)]
 
-            plt.plot(ordit_x,ordit_y,color = "black" ,linewidth = 1 ,alpha=0.1)
+            # 高速化(2026-08-25): 衝突と衝突の間は直線なので、端点2つで同じ図になる。
+            #   以前は linspace で 100 点に分割して描いていた（点数が50倍）。
+            #   さらに「x が変化しないなら同じ値を100個並べる」という分岐もあったが、
+            #   np.linspace(a, a, 100) は普通に動くので、もともと不要な分岐だった。
+            plt.plot([p_x[frame], p_x[frame + 1]], [p_y[frame], p_y[frame + 1]],
+                     color = "black" ,linewidth = 1 ,alpha=0.1)
 
-
-        ani = FuncAnimation(fig, update, frames=len(self.positions) - 1, interval=100 ,repeat=False )   
+        # ani をローカル変数に束縛しておくのは必須。参照が消えると matplotlib が
+        # アニメーションを破棄してしまう（plt.show() がブロックする間だけ生きている）。
+        ani = FuncAnimation(fig, update, frames=len(self.positions) - 1, interval=100 ,repeat=False )
 
         ax.set_aspect('equal')
         plt.show()

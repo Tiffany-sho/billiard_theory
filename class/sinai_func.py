@@ -1,5 +1,8 @@
 import numpy as np
 
+from vector_func import norm2
+
+
 def find_intersection_reversion(point ,velocity ,W ,H ,D) :
 
     if velocity[0] == 0.0 and velocity[1] == 0.0 :
@@ -37,7 +40,13 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
     B = np.dot(velocity,point)
     C = point[0] ** 2 + point[1] ** 2 - (D / 2) ** 2
 
-    if B ** 2 - A * C <= 0 or B >= 0.0 :
+    # 高速化(2026-08-25): 判別式 B^2 - A*C を1回だけ計算して使い回す。
+    #   以前はこの条件式と下の np.sqrt(...) の中で同じ式を2回計算していた。
+    #   書き方は元の ** 2 のまま。numpy の float64 では x*x と x**2 が
+    #   1 ULP ずれることがあり、書き換えると軌道のビットが変わってしまう。
+    disc = B ** 2 - A * C
+
+    if disc <= 0 or B >= 0.0 :
         temp_intersection_x = W /2 if velocity[0] > 0 else -W /2
         temp_intersection_tx =( temp_intersection_x - point[0] ) / velocity[0]
 
@@ -60,24 +69,29 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             t2 = C / A / t1
 
         else:
-            t1 = (- B -np.sign(B) * np.sqrt(B ** 2 - A * C)) / A
+            t1 = (- B -np.sign(B) * np.sqrt(disc)) / A
             t2 = C / A / t1
-        
+
         valid_t = [t for t in (t1, t2) if t >= 0]
 
         if valid_t:
             right_t = min(valid_t)
-            if (np.linalg.norm(point + right_t * velocity) - D / 2) > 1e-10:
+            # 高速化(2026-08-25): 以前は point + right_t * velocity を
+            #   チェック用と hit 用で2回計算していたので、1回にまとめた。
+            hit = point + right_t * velocity
+            if (norm2(hit) - D / 2) > 1e-10:
                 print("交点未発見エラー")
                 right_t = np.inf
-            hit = point + right_t * velocity
-            hit *= (D / 2) / np.linalg.norm(hit)
+                hit = point + right_t * velocity
+            hit *= (D / 2) / norm2(hit)
             return hit
         
 def find_reflect_direction(intersection,velocity,W,H,D) :
-    speed = np.linalg.norm(velocity)
-    if abs(np.linalg.norm(intersection) - D / 2) < 1e-10:
-        n_norm = np.linalg.norm(intersection)
+    # 高速化(2026-08-25): np.linalg.norm -> norm2（ビット単位で等価。vector_func.py 参照）。
+    #   あわせて、円判定と n_norm で同じ |intersection| を2回計算していたのを1回にまとめた。
+    speed = norm2(velocity)
+    n_norm = norm2(intersection)
+    if abs(n_norm - D / 2) < 1e-10:
         n_hat = - intersection / n_norm
         reflected = velocity - 2 * np.dot(velocity,n_hat) * n_hat
     elif np.abs(intersection[0]) == W / 2 and np.abs(intersection[1]) == H / 2:
@@ -89,10 +103,11 @@ def find_reflect_direction(intersection,velocity,W,H,D) :
     else:
         reflected = np.array([-velocity[0] ,velocity[1]])
 
-    return reflected / np.linalg.norm(reflected) * speed
+    # 反射で |v| は理論上変わらないが、丸め誤差の蓄積を防ぐため毎回正規化し直す。
+    return reflected / norm2(reflected) * speed
 
 def get_n_vector_arc_length(p,W,H,D):
-    if abs(np.linalg.norm(p) - D / 2) < 1e-10:
+    if abs(norm2(p) - D / 2) < 1e-10:
             set_arc_length = D / 2 * (np.arctan2(p[1],p[0])) + np.pi * D / 2 + 2 * (H + W)
             n = np.array([ p[0],  p[1]])
     else:

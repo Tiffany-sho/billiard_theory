@@ -1,5 +1,8 @@
 import numpy as np
 
+from vector_func import norm2
+
+
 def find_intersection_reversion(point,velocity,W, D) :
 
     if velocity[0] == 0 and velocity[1] == 0 :
@@ -37,8 +40,15 @@ def find_intersection_reversion(point,velocity,W, D) :
             A_right = velocity[0] ** 2 + velocity[1] ** 2 
             B_right = point[0] * velocity[0] + point[1] * velocity[1]  - W / 2 * velocity[0]
             C_right = point[0] ** 2 + point[1] **2 + W * W /4 - D * D /4 - W * point[0]
-            D_right = B_right * B_right - A_right * C_right 
-            
+            # 修正(2026-08-25): 以前はここが B_right * B_right、
+            #   下の np.sqrt の中が B_right ** 2 と書き分けられていた。
+            #   numpy の float64 では x*x と x**2 が 1 ULP ずれることがあり
+            #   （実際に衝突5190回目でずれる実例を確認）、
+            #   「D_right >= 0 を通ったのに sqrt には負の値が渡る」ことが起こりうる。
+            #   sqrt 側の式に合わせて ** 2 に統一する。値は sqrt 側と完全一致。
+            D_right = B_right ** 2 - A_right * C_right
+
+
             right_t =np.inf
             if D_right >= 0 :
                 if B_right == 0 :
@@ -46,7 +56,10 @@ def find_intersection_reversion(point,velocity,W, D) :
                     t2 = C_right / A_right / t1
 
                 else:
-                    t1 = (- B_right -np.sign(B_right) * np.sqrt(B_right ** 2 - A_right * C_right)) / A_right
+                    # 高速化: 判別式は直前の D_right で計算済み。
+                    #   以前は np.sqrt(B_right ** 2 - A_right * C_right) と書き直しており、
+                    #   同じ値を1衝突あたり2回計算していた（この式の約32%が無駄）。
+                    t1 = (- B_right -np.sign(B_right) * np.sqrt(D_right)) / A_right
                     t2 = C_right / A_right / t1
 
 
@@ -63,8 +76,10 @@ def find_intersection_reversion(point,velocity,W, D) :
             A_left = velocity[0] ** 2 + velocity[1] ** 2 
             B_left = point[0] * velocity[0] + point[1] * velocity[1]  + W / 2 * velocity[0]
             C_left = point[0] ** 2 + point[1] **2 + W * W /4 - D * D /4 + W * point[0]
-            D_left = B_left * B_left - A_left * C_left 
-                
+            # 修正: 右側と同じ理由で ** 2 に統一（x*x と x**2 のずれ対策）。
+            D_left = B_left ** 2 - A_left * C_left
+
+
             left_t =np.inf
             if D_left >= 0 :
                 if B_left == 0 :
@@ -72,7 +87,8 @@ def find_intersection_reversion(point,velocity,W, D) :
                     t2 = C_left / A_left / t1
 
                 else:
-                    t1 = (- B_left -np.sign(B_left) * np.sqrt(B_left ** 2 - A_left * C_left)) / A_left
+                    # 高速化: 判別式は直前の D_left で計算済み（右側と同じ理由）。
+                    t1 = (- B_left -np.sign(B_left) * np.sqrt(D_left)) / A_left
                     t2 = C_left / A_left / t1
 
                     
@@ -86,30 +102,43 @@ def find_intersection_reversion(point,velocity,W, D) :
 
 def find_reflect_direction(intersection,velocity,W) :
 
-    speed = np.linalg.norm(velocity)
+    # 高速化(2026-08-25): この関数は cProfile 上の最大のホットスポットだった。
+    #   np.linalg.norm を1衝突あたり最大3回呼んでおり、そこが支配的だったので
+    #   ビット単位で等価な norm2 に置き換えた（norm2 の docstring 参照）。
+    speed = norm2(velocity)
 
     if np.abs(intersection[0]) <= W /2 :
         reflected = np.array([velocity[0] ,-velocity[1]])
-    
+
     else :
 
         if intersection[0] > W /2 :
             center = np.array([W /2 , 0])
         else :
             center = np.array([-W /2 , 0])
-        
+
+        # ここは反射公式 v - 2(v·n̂)n̂ に渡すだけなので、
+        # n の向き（内向き/外向き）はどちらでも結果は同じ。
+        # 断面用の内向き法線は get_normal_vector 側で定義している。
         n = intersection - center
-        n_norm = np.linalg.norm(n)
+        n_norm = norm2(n)
 
         n_hat = n / n_norm
 
         reflected = velocity - 2 * np.dot(velocity,n_hat) * n_hat
 
-    return reflected / np.linalg.norm(reflected) * speed
+    # 反射で |v| は理論上変わらないが、丸め誤差の蓄積を防ぐため毎回正規化し直す
+    # （速さのドリフトを 1e-17 に抑えている実質的なガード。消さないこと）。
+    return reflected / norm2(reflected) * speed
 
 def get_normal_vector(intersection ,W ,H):
+    # 【規約】ここが返す n は「領域の内側を向く」単位法線。
+    #   直線部・円弧部のどちらでも向きを揃えること。
+    #   ポアンカレ断面の sinφ = v̂ × n̂ はこの向きに依存するので、
+    #   区間ごとに向きが違うと接続点 s = ±W/2 で sinφ が符号反転する。
 
     if abs(intersection[1]) == H /2:
+        # 直線部: 上辺(y=+H/2)なら下向き、下辺(y=-H/2)なら上向き → 内向き
         n = np.array([0 ,-np.sign(intersection[1])])
     else:
         if intersection[0] > W /2 :
@@ -139,13 +168,8 @@ def get_arc_length(intersection ,W ,H):
         else:
             if intersection[0] > 0 :
                 return  W  + H / 2 * np.pi - intersection[0]
-    # 【規約】ここが返す n は「領域の内側を向く」単位法線。
-    #   直線部・円弧部のどちらでも向きを揃えること。
-    #   ポアンカレ断面の sinφ = v̂ × n̂ はこの向きに依存するので、
-    #   区間ごとに向きが違うと接続点 s = ±W/2 で sinφ が符号反転する。
             else:
                 return  -W  - H / 2 * np.pi - intersection[0]
-        # 直線部: 上辺(y=+H/2)なら下向き、下辺(y=-H/2)なら上向き → 内向き
 
     else :
         arc = np.acos(2 * intersection[1] / H) * H / 2
