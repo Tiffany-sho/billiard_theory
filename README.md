@@ -76,6 +76,26 @@ billiard_theory/
 
 ## 実行方法
 
+### ブラウザで対話的に触る（パラメータ探索用）
+
+リポジトリ直下の **`simulation.html`** をダブルクリックしてブラウザで開くだけです。インストールもビルドもネット接続も要りません。
+
+5形状（矩形・楕円・スタジアム・シナイ・卵型）を切り替えながら、形状パラメータと初期条件をスライダーで動かすと、軌道図とポアンカレ断面が即座に描き直されます。断面の点にカーソルを合わせると、軌道図の対応する衝突が強調されます。
+
+Python 側と同じ値を出しているかは、ページ上部の「検算」ボタン、またはコマンドで確認できます。
+
+```bash
+node tools/check_html.js         # 5形状の数値を Python の参照値と突き合わせる
+python tests/test_invariants.py  # 物理不変量（速さ保存・境界上・定義域・法線の向き）
+python tools/dump_section.py     # 参照値を作り直して simulation.html へ差し込む
+```
+
+計算ロジック（`class/*_func.py` や `func/squre/`）を触ったら、`dump_section.py` → `check_html.js` の順に走らせてください。
+
+詳しい仕様は [`docs/requirements.md`](docs/requirements.md)、座標系の定義は [`docs/contracts.md`](docs/contracts.md) にあります。
+
+### Python で図を生成する（論文用）
+
 ```bash
 # スタジアムビリヤードのポアンカレ断面と軌道
 python stadium/stadium_poincare_map_arc.py
