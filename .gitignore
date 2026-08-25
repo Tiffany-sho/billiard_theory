@@ -1,2 +1,8 @@
 __pycache__/
 *.pyc
+
+# tools/dump_section.py が書き出す中間ファイル。
+# 中身は simulation.html の REFERENCE ブロックへ自動で差し込まれるので、
+# 追跡すると同じ生成データを2箇所で持つことになる。
+# 人が読む用の tools/reference_*.csv の方は追跡する（数値が変わったら diff に出したいため）。
+tools/reference.js
