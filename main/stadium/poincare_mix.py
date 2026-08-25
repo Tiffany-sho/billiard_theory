@@ -14,12 +14,11 @@ from stadium import Stadium
 
 wall_width =5.0
 wall_height =5.0
-sinai_circle_diameter = 2.0
 
 bound_num = 1000
 
 epoch = 100
-epoch_per_arc = 2 * (wall_width  + wall_height + np.pi * sinai_circle_diameter / 2) / epoch
+epoch_per_arc = 2 * (wall_width  + wall_height / 2 * np.pi ) / epoch
 
 fig ,ax = plt.subplots()
 stadium_poincare_map_arc_set(ax ,wall_width ,wall_height)

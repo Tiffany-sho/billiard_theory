@@ -13,7 +13,6 @@ from stadium import Stadium
 
 wall_width =5.0
 wall_height =5.0
-sinai_circle_diameter = 2.0
 
 position = np.array([0.5,0.0])
 velocity = np.array([0.1 ,0.5])
