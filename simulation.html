@@ -1,0 +1,2120 @@
+<meta charset="utf-8">
+<title>ビリヤード軌道・ポアンカレ断面</title>
+
+<!--
+  古典ビリヤードの軌道とポアンカレ断面を、パラメータを振りながら見比べるための1枚もの。
+
+  設計と規約:
+    docs/requirements.md  何を作るか（Must M1-M5 / 受け入れ基準 / 非スコープ）
+    docs/contracts.md     弧長 s・法線 n・sinφ・パラメータ名の定義。ここが正
+    CLAUDE.md             このリポジトリ固有の注意
+
+  このファイルは自己完結。CDN も外部フォントも fetch も使わない（ネットを切っても動く）。
+  ビルド不要。ダブルクリックでブラウザが開けばそれで動く。
+
+  script は3つに分けてある:
+    billiard-core  数値核。DOM に一切触らない。Node からも同じコードを実行できる
+    billiard-ref   Python が書き出した参照値（tools/dump_section.py が自動生成）
+    billiard-ui    画面。Step 3 以降で実装する
+-->
+
+<style>
+:root{
+  /* 色は必ずここのトークン経由で使う。描画コードに生の色コードを書かない。
+     見た目は Python 版（setting.py）に合わせる: 境界=黒 / 破線=赤 / 点=黒。
+     配色はライト固定（ダークモードは非スコープ。docs/requirements.md 参照）。 */
+  --ground:#f4f5f7;
+  --paper:#ffffff;
+  --ink:#16181c;
+  --ink-2:#5a606a;
+  --ink-3:#8b919b;
+  --line:#d2d6dc;
+  --rule:#e5e8ec;
+  --field:#fafbfc;
+  --boundary:#000000;   /* 境界線 */
+  --orbit:#000000;      /* 軌道 */
+  --dash:#d32f2f;       /* 断面の境界分離線 */
+  --dot:#000000;        /* 断面の点 */
+  --ok:#1b7f4b;
+  --ng:#b3261e;
+  --mono:"Consolas","SF Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:32px 24px 64px;
+  background:var(--ground); color:var(--ink);
+  font-family:"Yu Gothic UI","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+  font-size:14px; line-height:1.8;
+}
+.wrap{max-width:1000px; margin:0 auto; display:flex; flex-direction:column; gap:28px}
+h1{font-size:20px; margin:0; font-weight:700; letter-spacing:.02em}
+.sub{margin:0; color:var(--ink-2); font-size:13px}
+section{background:var(--paper); border:1px solid var(--line); padding:20px 22px}
+h2{font-size:15px; margin:0 0 4px; font-weight:700}
+.hint{margin:0 0 16px; color:var(--ink-2); font-size:12.5px}
+button{
+  font:inherit; font-size:13px; padding:7px 18px; cursor:pointer;
+  background:var(--field); color:var(--ink); border:1px solid var(--ink);
+}
+button:hover{background:var(--ground)}
+button:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
+#verify-out{margin-top:16px}
+table{border-collapse:collapse; width:100%; font-family:var(--mono); font-size:12px}
+th,td{text-align:right; padding:5px 9px; border-bottom:1px solid var(--rule); white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--ink-3); font-weight:500; border-bottom:1px solid var(--ink); font-size:11px}
+.pass{color:var(--ok); font-weight:700}
+.fail{color:var(--ng); font-weight:700}
+.verdict{margin-top:12px; font-size:13px; font-weight:700}
+.todo{color:var(--ink-3); font-size:13px; margin:0}
+code{font-family:var(--mono); font-size:12.5px; background:var(--field); border:1px solid var(--rule); padding:1px 4px}
+
+/* 軌道図は正方形に近く、ポアンカレ断面は横長にする。
+   断面の横軸の幅は形状で大きく変わる（スタジアム W=H=5 で約 ±12.9、卵型は ±π）が、
+   縦軸はつねに ±1 なので、同じ幅で並べると断面側の縦が大きく余る。
+   要件の差し戻し R1 で「軌道図は 1:1 固定 / 断面は横いっぱいに伸ばす」と決めた。 */
+.panels{display:grid; grid-template-columns:minmax(230px,34%) 1fr; gap:16px}
+@media (max-width:720px){ .panels{grid-template-columns:1fr} }
+figure{margin:0; display:flex; flex-direction:column; gap:6px; min-width:0}
+figcaption{
+  font-family:var(--mono); font-size:11px; color:var(--ink-3);
+  display:flex; justify-content:space-between; gap:10px;
+}
+canvas{
+  display:block; width:100%; height:300px;
+  background:var(--paper); border:1px solid var(--line);
+  touch-action:none;
+}
+#sim-status{
+  margin:14px 0 0; font-family:var(--mono); font-size:12px; color:var(--ink-2);
+  min-height:1.6em;
+}
+#sim-stop{margin:6px 0 0; font-size:12.5px; color:var(--ng)}
+
+/* 操作パネル */
+.sim-layout{display:grid; grid-template-columns:238px 1fr; gap:20px; align-items:start}
+@media (max-width:860px){ .sim-layout{grid-template-columns:1fr} }
+.controls{display:flex; flex-direction:column; gap:16px; min-width:0}
+.ctl-group{display:flex; flex-direction:column; gap:6px; min-width:0}
+.ctl-label{font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; color:var(--ink-3)}
+select,input[type=number]{
+  font:inherit; font-size:13px; font-family:var(--mono);
+  padding:5px 7px; width:100%; min-width:0;
+  background:var(--field); color:var(--ink); border:1px solid var(--line);
+}
+input[type=number].bad{border-color:var(--ng); border-width:1.6px}
+select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid var(--ink); outline-offset:1px}
+.param{display:grid; grid-template-columns:30px 1fr 72px; gap:7px; align-items:center}
+.param>label{font-family:var(--mono); font-size:12px; color:var(--ink-2)}
+input[type=range]{width:100%; min-width:0; accent-color:var(--ink)}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:7px}
+.field{display:grid; grid-template-columns:24px 1fr; gap:5px; align-items:center; min-width:0}
+.field>span{font-family:var(--mono); font-size:12px; color:var(--ink-2)}
+.row{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center}
+.msg{margin:0; font-size:11.5px; line-height:1.55}
+.msg:empty{display:none}
+.msg.error{color:var(--ng)}
+.msg.notice{color:var(--ink-2)}
+button[disabled]{opacity:.4; cursor:not-allowed}
+
+/* 再生バー */
+.modes{display:flex; gap:14px; flex-wrap:wrap}
+.modes label{display:flex; align-items:center; gap:5px; font-size:13px; cursor:pointer}
+.playback{
+  display:grid; grid-template-columns:auto 1fr auto auto; gap:12px; align-items:center;
+  margin-top:16px; padding-top:14px; border-top:1px solid var(--rule);
+}
+@media (max-width:720px){ .playback{grid-template-columns:auto 1fr; } }
+.playback #btn-play{min-width:88px}
+.playback select{width:auto}
+.frame-label{
+  font-family:var(--mono); font-size:12px; color:var(--ink-2);
+  white-space:nowrap; display:flex; align-items:center; gap:6px;
+}
+#sim-hover{
+  margin:8px 0 0; font-family:var(--mono); font-size:12px;
+  color:var(--ink); min-height:1.7em;
+}
+#section-canvas{cursor:crosshair}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>ビリヤード軌道・ポアンカレ断面</h1>
+    <p class="sub">矩形 / 楕円 / スタジアム / シナイ / 卵型 の5形状。ブラウザ内で計算します。</p>
+  </header>
+
+  <section>
+    <h2>検算</h2>
+    <p class="hint">
+      Python 側（<code>class/</code>, <code>func/squre/</code>）が出す値と、この JavaScript が出す値を突き合わせます。
+      参照値は <code>python tools/dump_section.py</code> が生成します。
+      判定は各成分の最大絶対誤差が <code>1e-6</code> 未満であること。
+    </p>
+    <button id="verify-run" type="button">検算する</button>
+    <div id="verify-out"></div>
+  </section>
+
+  <section>
+    <h2>シミュレーション</h2>
+    <p class="hint">
+      形状パラメータと初期条件は、変えた時点で描き直します（スライダーはドラッグ中も追随）。
+      衝突回数だけは「計算」を押すまで確定しません。
+      再生と相互ハイライトは Step 5 で実装します。
+    </p>
+    <div class="sim-layout">
+      <div class="controls">
+
+        <div class="ctl-group">
+          <label class="ctl-label" for="shape-select">形状</label>
+          <select id="shape-select"></select>
+        </div>
+
+        <div class="ctl-group">
+          <span class="ctl-label">形状パラメータ</span>
+          <!-- 中身は shape.params から組み立てる（形状ごとに欄が変わる） -->
+          <div id="shape-params"></div>
+        </div>
+
+        <div class="ctl-group">
+          <span class="ctl-label">初期位置</span>
+          <div class="grid2">
+            <label class="field"><span>x</span><input id="in-x" type="number" step="0.1"></label>
+            <label class="field"><span>y</span><input id="in-y" type="number" step="0.1"></label>
+          </div>
+          <p class="msg error" id="msg-position"></p>
+        </div>
+
+        <div class="ctl-group">
+          <span class="ctl-label">初速度</span>
+          <div class="grid2">
+            <label class="field"><span>vx</span><input id="in-vx" type="number" step="0.001"></label>
+            <label class="field"><span>vy</span><input id="in-vy" type="number" step="0.001"></label>
+          </div>
+          <p class="msg error" id="msg-velocity"></p>
+        </div>
+
+        <div class="ctl-group">
+          <label class="ctl-label" for="in-n">衝突回数</label>
+          <div class="row">
+            <input id="in-n" type="number" min="1" step="100">
+            <button id="btn-compute" type="button">計算</button>
+          </div>
+          <p class="msg" id="msg-bound"></p>
+        </div>
+
+        <div class="ctl-group">
+          <span class="ctl-label">表示</span>
+          <div class="modes">
+            <label><input type="radio" name="mode" value="all" checked>一括表示</label>
+            <label><input type="radio" name="mode" value="anim">アニメーション</label>
+          </div>
+        </div>
+
+        <p class="msg notice" id="msg-notice"></p>
+      </div>
+
+      <div class="panels">
+        <figure>
+          <figcaption><span>軌道図</span><span>アスペクト比 1:1</span></figcaption>
+          <canvas id="orbit-canvas"></canvas>
+        </figure>
+        <figure>
+          <figcaption><span>ポアンカレ断面</span><span>s &times; sin&phi;</span></figcaption>
+          <canvas id="section-canvas"></canvas>
+        </figure>
+      </div>
+    </div>
+    <div class="playback">
+      <button id="btn-play" type="button">再生</button>
+      <!-- 衝突番号スライダー。軌道図と断面の両方がここまでを描く。
+           断面から軌道図への相互ハイライトは一方向なので、その逆向きはこれで代替する。 -->
+      <input id="in-frame" type="range" min="0" step="1" value="0" aria-label="衝突番号">
+      <span class="frame-label" id="frame-label"></span>
+      <label class="frame-label">速度
+        <select id="in-speed">
+          <option value="1">x1</option>
+          <option value="4" selected>x4</option>
+          <option value="16">x16</option>
+          <option value="64">x64</option>
+        </select>
+      </label>
+    </div>
+
+    <p id="sim-hover"></p>
+    <p id="sim-status"></p>
+    <p id="sim-stop"></p>
+  </section>
+</div>
+
+
+<script id="billiard-core">
+"use strict";
+/* =====================================================================
+   数値核。DOM に触らない。Node からもそのまま実行できる。
+
+   移植の作法（docs/contracts.md と CLAUDE.md より）:
+     - Python の式を演算順序ごとそのまま写す。浮動小数は結合則を満たさないので
+       括弧を付け替えると 35 衝突後には 1e-6 を割りうる。「整理」しない。
+     - Python が None / inf を返す経路は null を返し、呼び出し側で計算を止める。
+       黙って NaN を先へ流さない。
+     - 分岐の比較（abs(y) == H/2 など）も Python のまま写す。
+       直線部の交点は y を ±H/2 と直接代入して作るので厳密比較が成立し、
+       円弧部の交点が偶然そこに乗ることはない。
+       ここで独自に境界へ丸める（スナップする）と座標が Python と 1e-16 ずれ、
+       カオス系では 35 衝突で増幅されうるので、あえて丸めない。
+       唯一スナップするのはシナイの障害物で、これは Python 側が既にやっている。
+   ===================================================================== */
+
+var Billiard = (function () {
+
+  /* ---------------------------------------------------------------- 小道具 */
+
+  // np.linalg.norm / class/vector_func.py: norm2 と同じ。2成分なので sqrt(x*x + y*y)。
+  function norm2(v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1]); }
+
+  // np.sign と同じ（0 は 0、-0 は -0 を返す）。Math.sign がそのまま一致する。
+  function sgn(x) { return Math.sign(x); }
+
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1]; }
+
+  /* 円弧を折れ線として標本化する。a0 -> a1 を n 等分（角度で等間隔）。
+     角度で刻むと弧長に対して等間隔になるので、少ない点数でも滑らかに見える。
+     y = sqrt(r^2 - x^2) のように x で刻むと上下端で点が極端に粗くなり、
+     カクつきを消すのに桁違いの点数が要る（setting.py にも同じ趣旨のメモがある）。 */
+  function sampleArc(cx, cy, r, a0, a1, n) {
+    var pts = [];
+    for (var k = 0; k <= n; k++) {
+      var t = a0 + (a1 - a0) * k / n;
+      pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]);
+    }
+    return pts;
+  }
+
+  var ARC_SAMPLES = 180;   // 半円あたりの分割数
+
+  function boxPts(W, H) {
+    return [[-W / 2, -H / 2], [W / 2, -H / 2], [W / 2, H / 2], [-W / 2, H / 2]];
+  }
+
+  /* 卵型・楕円の境界。右半分は a = W_r/2、左半分は a = W_l/2 の半楕円を
+     x = a cos t, y = (H/2) sin t で貼り合わせる。
+     t = ±π/2 では x = 0 になり左右の式が一致するので、継ぎ目は連続。 */
+  function eggBoundary(W_r, W_l, H) {
+    var ar = W_r / 2, al = W_l / 2, b = H / 2, n = ARC_SAMPLES;
+    var pts = [], k, t;
+    for (k = 0; k <= n; k++) {
+      t = -Math.PI / 2 + Math.PI * k / n;
+      pts.push([ar * Math.cos(t), b * Math.sin(t)]);
+    }
+    for (k = 1; k <= n; k++) {
+      t = Math.PI / 2 + Math.PI * k / n;
+      pts.push([al * Math.cos(t), b * Math.sin(t)]);
+    }
+    return [{ closed: true, pts: pts }];
+  }
+
+  function finite2(a) {
+    return a != null && isFinite(a[0]) && isFinite(a[1]);
+  }
+
+  // np.isclose(a, b) の既定値 rtol=1e-05, atol=1e-08 をそのまま写したもの。
+  // 矩形の「角ちょうど」判定に使われているので、既定値をずらすと挙動が変わる。
+  function isclose(a, b) {
+    return Math.abs(a - b) <= (1e-8 + 1e-5 * Math.abs(b));
+  }
+
+  /* ================================================================ 共通ループ */
+
+  /**
+   * 衝突 1..N を計算する。
+   * docs/contracts.md [D2]: 断面に載せるのは衝突点のみ。初期位置は載せない。
+   * 各衝突には「入ってきたときの速度」(vx, vy) を持たせる。
+   * sinφ は入射でも反射後でも数学的に同値だが、丸めで最下位ビットが違うので入射に固定する。
+   */
+  function simulate(shape, P, p0, v0, N) {
+    var collisions = [];
+    var p = [p0[0], p0[1]];
+    var v = [v0[0], v0[1]];
+
+    for (var i = 1; i <= N; i++) {
+      var q = shape.intersect(P, p, v);
+      if (!finite2(q)) {
+        return { collisions: collisions, stop: { reason: "no-intersection", at: i } };
+      }
+
+      collisions.push({ i: i, x: q[0], y: q[1], vx: v[0], vy: v[1] });
+
+      var nv = shape.reflect(P, q, v);
+      if (!finite2(nv)) {
+        return { collisions: collisions, stop: { reason: "bad-reflection", at: i } };
+      }
+
+      v = nv;
+      p = q;
+    }
+    return { collisions: collisions, stop: null };
+  }
+
+  /**
+   * ポアンカレ断面の点列 {i, s, sin} を作る。
+   * sinφ = v̂ × n̂（2次元の外積）。n の向きは全形状で領域の内側（docs/contracts.md [D1]）。
+   *
+   * shape.normal() は Python の get_normal_vector が返すものをそのまま返す。
+   * スタジアムだけ既に正規化済みのベクトルを返すが、Python 側も
+   * そのあと重ねて正規化しているので、ここでも同じく正規化し直す。
+   * 「無駄だから」と省くと最下位ビットが変わる。
+   */
+  function section(shape, P, collisions) {
+    var out = [];
+    for (var k = 0; k < collisions.length; k++) {
+      var c = collisions[k];
+      var q = [c.x, c.y];
+      var v = [c.vx, c.vy];
+      var n = shape.normal(P, q, v);
+      var nh = [n[0] / norm2(n), n[1] / norm2(n)];
+      var vh = [v[0] / norm2(v), v[1] / norm2(v)];
+      out.push({
+        i: c.i,
+        s: shape.coord(P, q),
+        sin: vh[0] * nh[1] - vh[1] * nh[0]
+      });
+    }
+    return out;
+  }
+
+  /* ================================================================ スタジアム
+     移植元: class/stadium_func.py
+     W = 矩形部の幅 / H = 高さ = 両端の半円の直径。W = 0 で半径 H/2 の真円。 */
+
+  var stadium = {
+    id: "stadium",
+    label: "スタジアム",
+    axis: "arc",
+    params: [
+      { key: "W", label: "W", min: 0, max: 20, step: 0.1, def: 5.0 },
+      { key: "H", label: "H", min: 0.1, max: 20, step: 0.1, def: 5.0 }
+    ],
+
+    // find_intersection_reversion(point, velocity, W, D) の D は高さ H のこと。
+    intersect: function (P, point, velocity) {
+      var W = P.W, D = P.H;
+
+      if (velocity[0] === 0 && velocity[1] === 0) return [point[0], point[1]];
+
+      if (velocity[0] === 0) {
+        var x = point[0], y;
+        if (Math.abs(point[0]) <= W / 2) y = sgn(velocity[1]) * D / 2;
+        else if (point[0] < -W / 2) y = sgn(velocity[1]) * Math.sqrt((D / 2) * (D / 2) - (x + W / 2) * (x + W / 2));
+        else y = sgn(velocity[1]) * Math.sqrt((D / 2) * (D / 2) - (x - W / 2) * (x - W / 2));
+        return [x, y];
+      }
+
+      if (velocity[1] === 0) {
+        var yy = point[1];
+        var xx = -sgn(yy) * Math.sqrt((D / 2) * (D / 2) - yy * yy) + sgn(velocity[0]) * W / 2;
+        return [xx, yy];
+      }
+
+      var temp_y = velocity[1] > 0 ? D / 2 : -D / 2;
+      var temp_t = (temp_y - point[1]) / velocity[1];
+
+      if (temp_t >= 0) {
+        var temp_x = point[0] + temp_t * velocity[0];
+
+        if (Math.abs(temp_x) <= W / 2) return [temp_x, temp_y];
+
+        // 円弧との交点。中心 (±W/2, 0)、半径 D/2 の円に対する2次方程式。
+        // 手前の根ではなく max（遠い方）を取るのが「reversion」の肝で、
+        // いま境界上にいる場合の t = 0 という自明な根を捨てるため。
+        var side = temp_x > W / 2 ? 1 : (temp_x < -W / 2 ? -1 : 0);
+        if (side === 0) return null;
+
+        var A = velocity[0] * velocity[0] + velocity[1] * velocity[1];
+        var B = point[0] * velocity[0] + point[1] * velocity[1] - side * W / 2 * velocity[0];
+        var C = point[0] * point[0] + point[1] * point[1] + W * W / 4 - D * D / 4 - side * W * point[0];
+        var Disc = B * B - A * C;
+
+        if (Disc < 0) return null;
+
+        var t1, t2;
+        if (B === 0) {
+          t1 = Math.sqrt(-A * C) / A;
+          t2 = C / A / t1;
+        } else {
+          t1 = (-B - sgn(B) * Math.sqrt(Disc)) / A;
+          t2 = C / A / t1;
+        }
+
+        var valid = [t1, t2].filter(function (t) { return t >= 0; });
+        if (valid.length === 0) return null;
+
+        var t = Math.max.apply(null, valid);
+        // Python はここで right_t = inf にしたうえで、そのまま return してしまう
+        // （呼び出し側に inf が漏れる）。JS では素直に null にして計算を止める。
+        if (side > 0 && point[0] + t * velocity[0] < W / 2) return null;
+        if (side < 0 && point[0] + t * velocity[0] > -W / 2) return null;
+
+        return [point[0] + t * velocity[0], point[1] + t * velocity[1]];
+      }
+
+      return null;   // Python では暗黙の None
+    },
+
+    reflect: function (P, q, velocity) {
+      var W = P.W;
+      var speed = norm2(velocity);
+      var reflected;
+
+      if (Math.abs(q[0]) <= W / 2) {
+        reflected = [velocity[0], -velocity[1]];
+      } else {
+        var cx = q[0] > W / 2 ? W / 2 : -W / 2;
+        var n = [q[0] - cx, q[1] - 0];
+        var nn = norm2(n);
+        var nh = [n[0] / nn, n[1] / nn];
+        var d = dot(velocity, nh);
+        reflected = [velocity[0] - 2 * d * nh[0], velocity[1] - 2 * d * nh[1]];
+      }
+
+      var rn = norm2(reflected);
+      return [reflected[0] / rn * speed, reflected[1] / rn * speed];
+    },
+
+    // 内向き単位法線。直線部・円弧部とも領域の内側を向く（docs/contracts.md [D1]）。
+    normal: function (P, q) {
+      var W = P.W, H = P.H;
+      if (Math.abs(q[1]) === H / 2) return [0, -sgn(q[1])];
+
+      var cx = q[0] > W / 2 ? W / 2 : -W / 2;
+      var n = [cx - q[0], 0 - q[1]];
+      var nn = norm2(n);
+      return [n[0] / nn, n[1] / nn];
+    },
+
+    coord: function (P, q) {
+      var W = P.W, H = P.H;
+      if (Math.abs(q[0]) <= W / 2) {
+        if (q[1] > 0) return q[0];
+        if (q[0] > 0) return W + H / 2 * Math.PI - q[0];
+        return -W - H / 2 * Math.PI - q[0];
+      }
+      var arc = Math.acos(2 * q[1] / H) * H / 2;
+      return q[0] > 0 ? W / 2 + arc : -W / 2 - arc;
+    },
+
+    range: function (P) {
+      var h = P.W + P.H * Math.PI / 2;     // setting.py: stadium_poincare_map_arc_set
+      return [-h, h];
+    },
+    dashes: function (P) {
+      var a = P.W / 2, b = P.W / 2 + P.H / 2 * Math.PI;
+      return [-b, -a, a, b];
+    },
+    bbox: function (P) {
+      var r = P.H / 2;
+      return [-(P.W / 2 + r), -r, P.W / 2 + r, r];
+    },
+    contains: function (P, p) {
+      var W = P.W, H = P.H;
+      if (Math.abs(p[0]) <= W / 2) return Math.abs(p[1]) < H / 2;
+      var cx = p[0] > 0 ? W / 2 : -W / 2;
+      return norm2([p[0] - cx, p[1]]) < H / 2;
+    },
+    // 上辺 → 右の半円 → 下辺 → 左の半円 を1本の閉じた折れ線にする。
+    // W = 0 のときは上下辺が長さ0に潰れ、半円2つで真円になる。
+    boundaryPath: function (P) {
+      var W = P.W, r = P.H / 2, n = ARC_SAMPLES;
+      var pts = [[-W / 2, r], [W / 2, r]];
+      pts = pts.concat(sampleArc(W / 2, 0, r, Math.PI / 2, -Math.PI / 2, n));
+      pts.push([W / 2, -r], [-W / 2, -r]);
+      pts = pts.concat(sampleArc(-W / 2, 0, r, -Math.PI / 2, -3 * Math.PI / 2, n));
+      return [{ closed: true, pts: pts }];
+    },
+    defaultPosition: function () { return [0, 0]; }
+  };
+
+  /* ================================================================ シナイ
+     移植元: class/sinai_func.py
+     外壁 |x| <= W/2, |y| <= H/2 の矩形 ＋ 原点中心・直径 D の円形障害物。 */
+
+  var sinai = {
+    id: "sinai",
+    label: "シナイ",
+    axis: "arc",
+    params: [
+      { key: "W", label: "W", min: 0.2, max: 20, step: 0.1, def: 5.0 },
+      { key: "H", label: "H", min: 0.2, max: 20, step: 0.1, def: 5.0 },
+      { key: "D", label: "D", min: 0.1, max: 10, step: 0.1, def: 2.0 }
+    ],
+
+    intersect: function (P, point, velocity) {
+      var W = P.W, H = P.H, D = P.D;
+
+      if (velocity[0] === 0.0 && velocity[1] === 0.0) return [point[0], point[1]];
+
+      if (velocity[0] === 0.0) {
+        var x = point[0], y;
+        if (Math.abs(x) > D / 2 && Math.abs(x) < W / 2) {
+          return [x, sgn(velocity[1]) * H / 2];
+        }
+        if (velocity[1] * point[1] >= 0) y = sgn(velocity[1]) * H / 2;
+        else y = sgn(point[1]) * Math.sqrt((D / 2) * (D / 2) - x * x);
+        return [x, y];
+      }
+
+      if (velocity[1] === 0.0) {
+        var yy = point[1], xx;
+        if (Math.abs(yy) > D / 2 && Math.abs(yy) < H / 2) {
+          return [sgn(velocity[0]) * W / 2, yy];
+        }
+        if (velocity[0] * point[0] >= 0) xx = sgn(velocity[0]) * W / 2;
+        else xx = sgn(point[0]) * Math.sqrt((D / 2) * (D / 2) - yy * yy);
+        return [xx, yy];
+      }
+
+      var A = velocity[0] * velocity[0] + velocity[1] * velocity[1];
+      var B = dot(velocity, point);
+      var C = point[0] * point[0] + point[1] * point[1] - (D / 2) * (D / 2);
+      var disc = B * B - A * C;
+
+      // 障害物へ向かっていない（B >= 0）か、そもそも交わらない（disc <= 0）なら外壁。
+      if (disc <= 0 || B >= 0.0) {
+        var temp_x = velocity[0] > 0 ? W / 2 : -W / 2;
+        var tx = (temp_x - point[0]) / velocity[0];
+        var temp_y = velocity[1] > 0 ? H / 2 : -H / 2;
+        var ty = (temp_y - point[1]) / velocity[1];
+
+        if (tx < ty) return [temp_x, point[1] + velocity[1] * tx];
+        if (tx > ty) return [point[0] + velocity[0] * ty, temp_y];
+        return [temp_x, temp_y];         // 角ちょうど
+      }
+
+      var t1, t2;
+      if (B === 0) {
+        t1 = Math.sqrt(-A * C) / A;
+        t2 = C / A / t1;
+      } else {
+        t1 = (-B - sgn(B) * Math.sqrt(disc)) / A;
+        t2 = C / A / t1;
+      }
+
+      var valid = [t1, t2].filter(function (t) { return t >= 0; });
+      if (valid.length === 0) return null;
+
+      // 障害物は手前の根（min）を取る。外壁と違って内側から当たるのではないため。
+      var t = Math.min.apply(null, valid);
+      var hit = [point[0] + t * velocity[0], point[1] + t * velocity[1]];
+      if (norm2(hit) - D / 2 > 1e-10) {
+        // Python はここで print して inf を入れ、NaN を返してしまう。JS では止める。
+        return null;
+      }
+      // 円へスナップして戻す。Python 側が元からやっているので、ここでも同じにする。
+      var k = (D / 2) / norm2(hit);
+      return [hit[0] * k, hit[1] * k];
+    },
+
+    reflect: function (P, q, velocity) {
+      var W = P.W, H = P.H, D = P.D;
+      var speed = norm2(velocity);
+      var reflected;
+
+      if (Math.abs(norm2(q) - D / 2) < 1e-10) {
+        var nn = norm2(q);
+        var nh = [-q[0] / nn, -q[1] / nn];
+        var d = dot(velocity, nh);
+        reflected = [velocity[0] - 2 * d * nh[0], velocity[1] - 2 * d * nh[1]];
+      } else if (Math.abs(q[0]) === W / 2 && Math.abs(q[1]) === H / 2) {
+        // 角。2辺の法線が同時に効いて反射が一意に定まらないので来た道を戻す
+        // （docs/contracts.md [D5]。矩形もこれに揃えてある）。
+        reflected = [-velocity[0], -velocity[1]];
+      } else if (Math.abs(q[1]) === H / 2) {
+        reflected = [velocity[0], -velocity[1]];
+      } else {
+        reflected = [-velocity[0], velocity[1]];
+      }
+
+      var rn = norm2(reflected);
+      return [reflected[0] / rn * speed, reflected[1] / rn * speed];
+    },
+
+    // get_n_vector_arc_length の n の部分。正規化していない。
+    normal: function (P, q) {
+      var W = P.W, H = P.H, D = P.D;
+      if (Math.abs(norm2(q) - D / 2) < 1e-10) return [q[0], q[1]];
+      if (q[1] === H / 2) return [0.0, -1.0];
+      if (q[0] === -W / 2) return [1.0, 0.0];
+      if (q[1] === -H / 2) return [0.0, 1.0];
+      return [-1.0, 0.0];
+    },
+
+    // 原点は外壁の右上角。外壁を時計回りにたどり、そのあと障害物。
+    coord: function (P, q) {
+      var W = P.W, H = P.H, D = P.D;
+      if (Math.abs(norm2(q) - D / 2) < 1e-10) {
+        return D / 2 * Math.atan2(q[1], q[0]) + Math.PI * D / 2 + 2 * (H + W);
+      }
+      if (q[1] === H / 2) return W / 2 - q[0];
+      if (q[0] === -W / 2) return W + H / 2 - q[1];
+      if (q[1] === -H / 2) return W + H + W / 2 + q[0];
+      return W + H + W + H / 2 + q[1];
+    },
+
+    range: function (P) {
+      return [0, 2 * (P.D * Math.PI / 2 + P.W + P.H)];   // setting.py: sinai_poincare_map_arc
+    },
+    dashes: function (P) {
+      return [2 * (P.W + P.H)];      // 外壁と障害物の切れ目。1本だけ
+    },
+    bbox: function (P) {
+      return [-P.W / 2, -P.H / 2, P.W / 2, P.H / 2];
+    },
+    // 「外壁の内側 かつ 障害物の外側」。境界上ちょうどは領域外として扱う。
+    contains: function (P, p) {
+      return Math.abs(p[0]) < P.W / 2 && Math.abs(p[1]) < P.H / 2 && norm2(p) > P.D / 2;
+    },
+    // 外壁と障害物で2本の閉じた折れ線になる（唯一、連結でない境界）。
+    boundaryPath: function (P) {
+      return [
+        { closed: true, pts: boxPts(P.W, P.H) },
+        { closed: true, pts: sampleArc(0, 0, P.D / 2, 0, 2 * Math.PI, 2 * ARC_SAMPLES) }
+      ];
+    },
+    defaultPosition: function (P) {
+      return [(P.D / 2 + P.W / 2) / 2, 0];    // 障害物と右壁のちょうど中間
+    }
+  };
+
+  /* ================================================================ 矩形
+     移植元: func/squre/ の4ファイル（矩形だけまだクラス化されていない）。 */
+
+  var rect = {
+    id: "rect",
+    label: "矩形",
+    axis: "arc",
+    params: [
+      { key: "W", label: "W", min: 0.2, max: 20, step: 0.1, def: 5.0 },
+      { key: "H", label: "H", min: 0.2, max: 20, step: 0.1, def: 5.0 }
+    ],
+
+    intersect: function (P, point, velocity) {
+      var W = P.W, H = P.H;
+
+      if (velocity[0] === 0.0 && velocity[1] === 0.0) return [point[0], point[1]];
+      if (velocity[0] === 0.0) return [point[0], sgn(velocity[1]) * H / 2];
+      if (velocity[1] === 0.0) return [sgn(velocity[0]) * W / 2, point[1]];
+
+      var temp_x = velocity[0] > 0 ? W / 2 : -W / 2;
+      var tx = (temp_x - point[0]) / velocity[0];
+      var temp_y = velocity[1] > 0 ? H / 2 : -H / 2;
+      var ty = (temp_y - point[1]) / velocity[1];
+
+      // np.isclose の既定値をそのまま使っている。角の判定がこれで決まる。
+      if (isclose(tx, ty)) return [temp_x, temp_y];
+      if (tx < ty) return [temp_x, point[1] + velocity[1] * tx];
+      return [point[0] + velocity[0] * ty, temp_y];
+    },
+
+    reflect: function (P, q, velocity) {
+      var W = P.W, H = P.H;
+      var speed = norm2(velocity);
+      var reflected;
+
+      if (Math.abs(q[0]) === W / 2 && Math.abs(q[1]) === H / 2) {
+        reflected = [-velocity[0], -velocity[1]];      // 角 → 逆行（[D5]）
+      } else if (Math.abs(q[0]) === W / 2) {
+        reflected = [-velocity[0], velocity[1]];
+      } else {
+        reflected = [velocity[0], -velocity[1]];
+      }
+
+      var rn = norm2(reflected);
+      return [reflected[0] / rn * speed, reflected[1] / rn * speed];
+    },
+
+    // 矩形だけ法線が速度を使う（角で -v̂ を返すため）。
+    normal: function (P, q, v) {
+      var W = P.W, H = P.H;
+      if (Math.abs(q[0]) === W / 2 && Math.abs(q[1]) === H / 2) {
+        var vn = norm2(v);
+        return [-v[0] / vn, -v[1] / vn];
+      }
+      if (Math.abs(q[0]) === W / 2) return [-sgn(q[0]), 0];
+      return [0, -sgn(q[1])];
+    },
+
+    // スタジアムと同じ中央原点方式だが、こちらは y で先に分岐する（Python のまま）。
+    coord: function (P, q) {
+      var W = P.W, H = P.H;
+      if (Math.abs(q[1]) === H / 2) {
+        if (q[1] > 0) return q[0];
+        if (q[0] > 0) return W + H - q[0];
+        return -W - H - q[0];
+      }
+      if (q[0] > 0) return W / 2 + H / 2 - q[1];
+      return -W / 2 - H / 2 + q[1];
+    },
+
+    range: function (P) {
+      var h = P.W + P.H;             // setting.py: squrt_poincare_map_arc_set
+      return [-h, h];
+    },
+    dashes: function (P) {
+      var a = P.W / 2, b = P.W / 2 + P.H;
+      return [-b, -a, a, b];
+    },
+    bbox: function (P) {
+      return [-P.W / 2, -P.H / 2, P.W / 2, P.H / 2];
+    },
+    contains: function (P, p) {
+      return Math.abs(p[0]) < P.W / 2 && Math.abs(p[1]) < P.H / 2;
+    },
+    boundaryPath: function (P) {
+      return [{ closed: true, pts: boxPts(P.W, P.H) }];
+    },
+    defaultPosition: function () { return [0, 0]; }
+  };
+
+  /* ================================================================ 卵型
+     移植元: class/egg_func.py
+     右半分 (x/(W_r/2))^2 + (y/(H/2))^2 = 1, x >= 0
+     左半分 (x/(W_l/2))^2 + (y/(H/2))^2 = 1, x <= 0  を貼り合わせたもの。
+     W_r == W_l のとき楕円と厳密に一致する（楕円はこのカーネルを使い回す）。 */
+
+  function eggIntersect(point, velocity, W_r, W_l, H) {
+    if (velocity[0] === 0 && velocity[1] === 0) return [point[0], point[1]];
+
+    if (velocity[0] === 0) {
+      var x = point[0], y, a;
+      if (point[0] === 0) y = sgn(velocity[1]) * H / 2;
+      else {
+        a = point[0] > 0 ? W_r : W_l;
+        y = sgn(velocity[1]) * H / 2 * Math.sqrt(1 - (x / (a / 2)) * (x / (a / 2)));
+      }
+      return [x, y];
+    }
+
+    if (velocity[1] === 0) {
+      var yy = point[1], xx;
+      if (point[1] === 0) {
+        xx = velocity[0] > 0 ? W_r / 2 : -W_l / 2;
+      } else {
+        var s = Math.sqrt(1 - (yy / (H / 2)) * (yy / (H / 2)));
+        xx = velocity[0] > 0 ? W_r / 2 * s : -W_l / 2 * s;
+      }
+      return [xx, yy];
+    }
+
+    var temp_y = velocity[1] > 0 ? H / 2 : -H / 2;
+    var t0 = (temp_y - point[1]) / velocity[1];
+
+    if (t0 > 0) {
+      var temp_x = point[0] + t0 * velocity[0];
+      if (temp_x === 0) return [0, sgn(velocity[1]) * H / 2];
+
+      var Wc = temp_x > 0 ? W_r : W_l;
+      var ax = Wc / 2, by = H / 2;
+
+      var A = (velocity[0] / ax) * (velocity[0] / ax) + (velocity[1] / by) * (velocity[1] / by);
+      var B = point[0] * velocity[0] / (ax * ax) + point[1] * velocity[1] / (by * by);
+      var C = (point[0] / ax) * (point[0] / ax) + (point[1] / by) * (point[1] / by) - 1;
+      var Disc = B * B - A * C;
+
+      if (Disc < 0) return null;
+
+      var t1, t2;
+      if (B === 0) {
+        t1 = Math.sqrt(-A * C) / A;
+        t2 = C / A / t1;
+      } else {
+        t1 = (-B - sgn(B) * Math.sqrt(Disc)) / A;
+        t2 = C / A / t1;
+      }
+
+      // ここだけ t > 0（スタジアムは t >= 0）。Python のまま。
+      var valid = [t1, t2].filter(function (t) { return t > 0; });
+      if (valid.length === 0) return null;
+
+      var t = Math.max.apply(null, valid);
+      return [point[0] + t * velocity[0], point[1] + t * velocity[1]];
+    }
+
+    return null;
+  }
+
+  // 内向き法線（正規化していない）。楕円の勾配は外向きなので符号を反転する。
+  function eggNormal(q, W_r, W_l, H) {
+    var W = q[0] > 0 ? W_r : W_l;
+    return [-((H / 2) * (H / 2) * q[0]), -((W / 2) * (W / 2) * q[1])];
+  }
+
+  function eggReflect(q, velocity, W_r, W_l, H) {
+    var speed = norm2(velocity);
+
+    // 上下の頂点。Python はここで速さの取り直しをせずに返している（そのまま写す）。
+    if (q[0] === 0) return [velocity[0], -velocity[1]];
+
+    var n = eggNormal(q, W_r, W_l, H);
+    var nn = norm2(n);
+    var nh = [n[0] / nn, n[1] / nn];
+    var d = dot(velocity, nh);
+    var reflected = [velocity[0] - 2 * d * nh[0], velocity[1] - 2 * d * nh[1]];
+
+    var rn = norm2(reflected);
+    return [reflected[0] / rn * speed, reflected[1] / rn * speed];
+  }
+
+  function eggContains(p, W_r, W_l, H) {
+    var a = (p[0] > 0 ? W_r : W_l) / 2, b = H / 2;
+    return (p[0] / a) * (p[0] / a) + (p[1] / b) * (p[1] / b) < 1;
+  }
+
+  var egg = {
+    id: "egg",
+    label: "卵型",
+    axis: "angle",
+    params: [
+      { key: "W_r", label: "W_r", min: 0.2, max: 20, step: 0.1, def: 6.0 },
+      { key: "W_l", label: "W_l", min: 0.2, max: 20, step: 0.1, def: 3.0 },
+      { key: "H", label: "H", min: 0.2, max: 20, step: 0.1, def: 4.0 }
+    ],
+    intersect: function (P, p, v) { return eggIntersect(p, v, P.W_r, P.W_l, P.H); },
+    reflect: function (P, q, v) { return eggReflect(q, v, P.W_r, P.W_l, P.H); },
+    normal: function (P, q) { return eggNormal(q, P.W_r, P.W_l, P.H); },
+    // 弧長ではなく極角。弧長を出すには楕円積分が要る（docs/contracts.md [D4]）。
+    coord: function (P, q) { return Math.atan2(q[1], q[0]); },
+    range: function () { return [-Math.PI, Math.PI]; },
+    dashes: function () { return [-Math.PI / 2, Math.PI / 2]; },
+    bbox: function (P) { return [-P.W_l / 2, -P.H / 2, P.W_r / 2, P.H / 2]; },
+    contains: function (P, p) { return eggContains(p, P.W_r, P.W_l, P.H); },
+    boundaryPath: function (P) { return eggBoundary(P.W_r, P.W_l, P.H); },
+    defaultPosition: function () { return [0, 0]; }
+  };
+
+  /* 楕円は卵型カーネルに W_r = W_l = W を渡したもの。
+     func/ellipse/ の Newton 法版は使わない（同じ交点を閉じた式で解けるため）。 */
+  var ellipse = {
+    id: "ellipse",
+    label: "楕円",
+    axis: "angle",
+    params: [
+      { key: "W", label: "W", min: 0.2, max: 20, step: 0.1, def: 6.0 },
+      { key: "H", label: "H", min: 0.2, max: 20, step: 0.1, def: 4.0 }
+    ],
+    intersect: function (P, p, v) { return eggIntersect(p, v, P.W, P.W, P.H); },
+    reflect: function (P, q, v) { return eggReflect(q, v, P.W, P.W, P.H); },
+    normal: function (P, q) { return eggNormal(q, P.W, P.W, P.H); },
+    coord: function (P, q) { return Math.atan2(q[1], q[0]); },
+    range: function () { return [-Math.PI, Math.PI]; },
+    dashes: function () { return [-Math.PI / 2, Math.PI / 2]; },
+    bbox: function (P) { return [-P.W / 2, -P.H / 2, P.W / 2, P.H / 2]; },
+    contains: function (P, p) { return eggContains(p, P.W, P.W, P.H); },
+    boundaryPath: function (P) { return eggBoundary(P.W, P.W, P.H); },
+    defaultPosition: function () { return [0, 0]; }
+  };
+
+  var SHAPES = {
+    rect: rect, ellipse: ellipse, stadium: stadium, sinai: sinai, egg: egg
+  };
+  var SHAPE_ORDER = ["rect", "ellipse", "stadium", "sinai", "egg"];
+
+  /* ================================================================ 検算 */
+
+  var TOLERANCE = 1e-6;
+
+  /**
+   * REFERENCE（Python が書き出した参照値）と突き合わせる。
+   * 返り値は表示側が整形しやすい素の配列。DOM には触らない。
+   */
+  function selfTest(reference) {
+    var results = [];
+
+    for (var si = 0; si < SHAPE_ORDER.length; si++) {
+      var id = SHAPE_ORDER[si];
+      var ref = reference ? reference[id] : null;
+
+      if (!ref) {
+        results.push({ id: id, label: SHAPES[id].label, ok: false, note: "参照値がありません" });
+        continue;
+      }
+
+      var shape = SHAPES[id];
+      var run = simulate(shape, ref.params, ref.p0, ref.v0, ref.N);
+
+      if (run.stop) {
+        results.push({
+          id: id, label: shape.label, ok: false,
+          note: run.stop.reason + " (衝突 " + run.stop.at + " 回目で停止)"
+        });
+        continue;
+      }
+      if (run.collisions.length !== ref.rows.length) {
+        results.push({
+          id: id, label: shape.label, ok: false,
+          note: "衝突数が違う: js=" + run.collisions.length + " ref=" + ref.rows.length
+        });
+        continue;
+      }
+
+      var pts = section(shape, ref.params, run.collisions);
+      var dPos = 0, dVel = 0, dCoord = 0, dSin = 0;
+
+      for (var k = 0; k < ref.rows.length; k++) {
+        var r = ref.rows[k];          // [i, x, y, vx_in, vy_in, coord, sin]
+        var c = run.collisions[k];
+        dPos = Math.max(dPos, Math.abs(c.x - r[1]), Math.abs(c.y - r[2]));
+        dVel = Math.max(dVel, Math.abs(c.vx - r[3]), Math.abs(c.vy - r[4]));
+        dCoord = Math.max(dCoord, Math.abs(pts[k].s - r[5]));
+        dSin = Math.max(dSin, Math.abs(pts[k].sin - r[6]));
+      }
+
+      var worst = Math.max(dPos, dVel, dCoord, dSin);
+      results.push({
+        id: id, label: shape.label, ok: worst < TOLERANCE, note: "",
+        n: ref.rows.length, dPos: dPos, dVel: dVel, dCoord: dCoord, dSin: dSin, worst: worst
+      });
+    }
+
+    return results;
+  }
+
+  return {
+    SHAPES: SHAPES,
+    SHAPE_ORDER: SHAPE_ORDER,
+    TOLERANCE: TOLERANCE,
+    norm2: norm2,
+    simulate: simulate,
+    section: section,
+    selfTest: selfTest
+  };
+})();
+
+// Node から読み込んだときだけ公開する（ブラウザでは何もしない）。
+if (typeof module !== "undefined" && module.exports) { module.exports = Billiard; }
+</script>
+
+
+<script id="billiard-ref">
+"use strict";
+// === REFERENCE BEGIN === tools/dump_section.py が自動生成する。手で編集しない。
+// generated by tools/dump_section.py -- do not edit by hand
+// rows: [i, x, y, vx_in, vy_in, coord, sin]
+// vx_in/vy_in = velocity ENTERING the collision (before reflection)
+var REFERENCE = {
+  "stadium": {
+    params: {W: 5.0, H: 5.0},
+    p0: [0.5, 0.0], v0: [0.0037139067635410376, 0.009284766908852594], N: 35,
+    rows: [
+      [1, 1.5, 2.5, 0.0037139067635410376, 0.009284766908852594, 1.5, -0.3713906763541038],
+      [2, 3.428476690885259, -2.3211917272131473, 0.003713906763541038, -0.009284766908852594, 9.402715691193569, -5.551115123125783e-17],
+      [3, 1.4999999999999991, 2.5, -0.0037139067635410384, 0.009284766908852592, 1.4999999999999991, 0.37139067635410383],
+      [4, -0.5000000000000018, -2.5, -0.0037139067635410384, -0.009284766908852592, -12.353981633974481, -0.37139067635410383],
+      [5, -2.500000000000002, 2.499999999999999, -0.0037139067635410384, 0.009284766908852592, -2.500000064523921, 0.371390676354103],
+      [6, -4.224137931034478, -1.8103448275862108, -0.0037139067635410215, -0.009284766908852599, -8.451449748412665, 0.37139067635410283],
+      [7, 4.0374409568890774, 1.9713638182943254, 0.009092668283152179, 0.004162136890175332, 4.1558900394103855, -0.4610367016809645],
+      [8, 3.229170043236125, -2.391299029407872, -0.0018216997023553076, -0.009832670552522267, 9.614056095520178, -0.4610367016809636],
+      [9, -1.562729088364931, 2.5, -0.006998113235653448, 0.007143277338937079, -1.562729088364931, 0.6998113235653449],
+      [10, -4.849331034579917, -0.8547769825864839, -0.006998113235653448, -0.007143277338937079, -7.299364528771449, 0.4320038810242374],
+      [11, 4.284751544929188, -1.7506175832753665, 0.009952249026753833, -0.0009760836590566116, 8.366349494751919, 0.6272206128355594],
+      [12, 3.829884053679472, 2.1169337268249704, -0.0011680615593723904, 0.00993154732121418, 3.90226508424243, 0.6272206128355596],
+      [13, -4.842903430150823, -0.872240515561804, -0.009454214196398992, -0.0032585017920215686, -7.317973415937816, -0.02447974556875382],
+      [14, 3.2728603282214657, 2.3775379940310915, 0.0092833963892333, 0.00371733123091959, 3.2857323698117638, -0.7679459917526733],
+      [15, 4.977644315458081, -0.3335845411260183, 0.005323169792813669, -0.008465451160858239, 6.761573263212925, -0.767945991752672],
+      [16, 2.616525244186868, -2.4972828969636565, -0.00737256908296071, -0.006756125007500371, 10.237414156614113, -0.7679459917526718],
+      [17, -3.62450117259131, 2.232822678324629, -0.00796965804500521, 0.006040244253809917, -3.6663547995939574, 0.44010285900931145],
+      [18, -3.575884106729905, -2.2566509231349885, 0.00010828488987323429, -0.009999413701943988, -9.241770337462299, 0.4401028590093114],
+      [19, 2.4256124658220557, 2.5, 0.007836983294588444, 0.0062114163312679055, 2.4256124658220557, -0.7836983294588444],
+      [20, 4.949579370194685, 0.49956071614630915, 0.007836983294588444, -0.0062114163312679055, 5.924044349013633, -0.7652162516734191],
+      [21, 3.411344995316753, -2.3279712840821523, -0.0047788074650463065, -0.008784247219427383, 9.42114010219693, -0.7652162516734192],
+      [22, -4.949272058193593, 0.5010652501941544, -0.009472404215023305, 0.003205239209046456, -5.922508750289591, -0.12416840986412797],
+      [23, 4.985544004312944, -0.26846043027597066, 0.00997013601786154, -0.0007722614747221503, 6.695969895450156, 0.03028388508030201],
+      [24, -4.753289794193758, 1.0829058608125846, -0.009905095819308853, 0.0013744369066313262, -5.306994774677945, 0.30517126640656733],
+      [25, -0.9693557855974868, -2.5, 0.007261321795762686, -0.006875551307232151, -11.884625848376995, 0.7261321795762687],
+      [26, 3.8755734657541945, 2.0875338656685285, 0.007261321795762686, 0.006875551307232151, 3.9565973067249227, -0.22801716870046046],
+      [27, 2.187472472621616, -2.5, -0.0034533733028341627, -0.009384786243238161, 10.666509161352867, -0.34533733028341634],
+      [28, 0.3475939642952517, 2.5, -0.0034533733028341627, 0.009384786243238161, 0.3475939642952517, 0.34533733028341634],
+      [29, -1.4922845440311128, -2.5, -0.0034533733028341627, -0.009384786243238161, -11.36169708994337, -0.34533733028341634],
+      [30, -3.2855663202343477, 2.373370084186928, -0.0034533733028341627, 0.009384786243238161, -3.299104509948118, 0.032950435647595144],
+      [31, -1.8488647639240798, -2.5, 0.0028277446770187337, -0.009591864263092562, -11.005116870050403, 0.28277446770187337],
+      [32, -0.3748318755004554, 2.5, 0.0028277446770187337, 0.009591864263092562, -0.3748318755004554, -0.28277446770187337],
+      [33, 1.099201012923169, -2.5, 0.0028277446770187337, -0.009591864263092562, 11.754780621051314, 0.28277446770187337],
+      [34, 2.572920315362993, 2.498936299229606, 0.0028277446770187337, 0.009591864263092562, 2.572930659176218, -0.25467648205486726],
+      [35, 3.667409286925124, -2.2106911943555057, 0.002263617767517309, -0.00974043297818839, 9.139346597183753, -0.2546764820548675],
+    ],
+  },
+  "sinai": {
+    params: {W: 5.0, H: 5.0, D: 2.0},
+    p0: [1.3, 0.7], v0: [0.0037139067635410376, 0.009284766908852594], N: 35,
+    rows: [
+      [1, 2.02, 2.5, 0.0037139067635410376, 0.009284766908852594, 0.48, -0.3713906763541038],
+      [2, 2.5, 1.3000000000000003, 0.003713906763541038, -0.009284766908852594, 18.8, -0.9284766908852593],
+      [3, 0.9799999999999998, -2.5, -0.003713906763541038, -0.009284766908852594, 13.48, -0.3713906763541038],
+      [4, 0.35408525864749785, -0.9352131466187453, -0.003713906763541038, 0.009284766908852594, 21.932732102709334, 0.01856953381770554],
+      [5, 0.9135398456370368, -2.5, 0.0033665773204830467, -0.009416270872548706, 13.413539845637036, 0.33665773204830474],
+      [6, 2.5, 1.9373074252884424, 0.0033665773204830467, 0.009416270872548706, 19.43730742528844, 0.9416270872548708],
+      [7, 2.298821838701482, 2.5, -0.0033665773204830467, 0.009416270872548706, 0.20117816129851818, 0.33665773204830474],
+      [8, 0.5111835230400008, -2.5, -0.0033665773204830467, -0.009416270872548706, 13.011183523040001, -0.33665773204830474],
+      [9, -0.025221707595858962, -0.9996818821334861, -0.0033665773204830467, 0.009416270872548706, 21.54557194436673, 0.3603000782679228],
+      [10, -0.6486343474262395, -2.5, -0.0038371318870313387, -0.009234523208131933, 11.85136565257376, -0.3837131887031339],
+      [11, -2.5, 1.9555359546574484, -0.0038371318870313387, 0.009234523208131933, 5.5444640453425516, -0.9234523208131935],
+      [12, -2.2737641345807384, 2.5, 0.0038371318870313387, 0.009234523208131933, 4.7737641345807384, -0.3837131887031339],
+      [13, -0.1961626165877166, -2.5, 0.0038371318870313387, -0.009234523208131933, 12.303837383412283, 0.3837131887031339],
+      [14, 0.47756305057386106, -0.878597480491828, 0.0038371318870313387, 0.009234523208131933, 22.068675260290178, -0.7781361482131193],
+      [15, 2.5, -1.249178470779191, 0.0098362372989619, -0.0018023417540829112, 16.250821529220808, -0.18023417540829118],
+      [16, -2.5, -2.165352867198606, -0.0098362372989619, -0.0018023417540829112, 9.665352867198607, 0.18023417540829118],
+      [17, -0.6736712240089942, -2.5, 0.0098362372989619, -0.0018023417540829112, 11.826328775991005, 0.9836237298961903],
+      [18, 2.5, -1.9184727363819787, 0.0098362372989619, 0.0018023417540829112, 15.581527263618021, 0.18023417540829118],
+      [19, -2.5, -1.0022983399625636, -0.0098362372989619, 0.0018023417540829112, 8.502298339962564, -0.18023417540829118],
+      [20, -0.734351051162406, -0.6787698679645918, 0.0098362372989619, 0.0018023417540829112, 20.74608620698871, -0.5352989931020083],
+      [21, -1.2185419378119309, -2.5, -0.00256934076157332, -0.009664289319495653, 11.281458062188069, -0.25693407615733205],
+      [22, -2.5, 2.3200618808547038, -0.00256934076157332, 0.009664289319495653, 5.179938119145296, -0.9664289319495657],
+      [23, -2.4521617856423017, 2.5, 0.00256934076157332, 0.009664289319495653, 4.952161785642302, -0.25693407615733205],
+      [24, -1.1228655090965345, -2.5, 0.00256934076157332, -0.009664289319495653, 11.377134490903465, 0.25693407615733205],
+      [25, -0.6583360521648439, -0.7527241476264782, 0.00256934076157332, 0.009664289319495653, 20.85219027669649, 0.4428345242858393],
+      [26, -2.5, -1.5171496132413962, -0.009235985558226023, -0.0038336106698829363, 9.017149613241397, 0.3833610669882937],
+      [27, -0.13210384160462452, -2.5, 0.009235985558226023, -0.0038336106698829363, 12.367896158395375, 0.9235985558226024],
+      [28, 2.5, -1.4074840678558345, 0.009235985558226023, 0.0038336106698829363, 16.092515932144167, 0.3833610669882937],
+      [29, 0.7371214329761677, -0.6757603073924668, -0.009235985558226023, 0.0038336106698829363, 22.39959698367617, 0.3415475849442366],
+      [30, 1.6873914924961215, -2.5, 0.004619899538404586, -0.008868851574755835, 14.187391492496122, 0.46198995384045866],
+      [31, 2.5, -0.9400300955625196, 0.004619899538404586, 0.008868851574755835, 16.55996990443748, 0.8868851574755837],
+      [32, 0.7080438130429869, 2.5, -0.004619899538404586, 0.008868851574755835, 1.791956186957013, 0.46198995384045866],
+      [33, -0.07478428996022025, 0.9971997342434191, -0.004619899538404586, -0.008868851574755835, 24.78724315392365, -0.5270213359709045],
+      [34, -1.1703737973348556, 2.5, -0.0058910111850113646, 0.00808059324666642, 3.6703737973348556, 0.5891011185011366],
+      [35, -2.5, 0.6761758420721864, -0.0058910111850113646, -0.00808059324666642, 6.823824157927813, 0.8080593246666422],
+    ],
+  },
+  "rect": {
+    params: {W: 5.0, H: 5.0},
+    p0: [0.5, 0.0], v0: [0.5773502691896258, 0.8164965809277261], N: 35,
+    rows: [
+      [1, 2.267766952966369, 2.5, 0.5773502691896258, 0.8164965809277261, 2.267766952966369, -0.5773502691896258],
+      [2, 2.5, 2.17157287525381, 0.5773502691896258, -0.8164965809277261, 2.82842712474619, -0.8164965809277261],
+      [3, -0.8033008588991062, -2.5, -0.5773502691896258, -0.8164965809277261, -9.196699141100893, -0.5773502691896258],
+      [4, -2.5, -0.1005050633883342, -0.5773502691896258, 0.8164965809277261, -5.100505063388335, -0.8164965809277261],
+      [5, -0.6611652351681563, 2.5, 0.5773502691896258, 0.8164965809277261, -0.6611652351681563, -0.5773502691896258],
+      [6, 2.5, -1.9705627484771409, 0.5773502691896258, -0.8164965809277261, 6.970562748477141, -0.8164965809277261],
+      [7, 2.1256313292354188, -2.5, -0.5773502691896258, -0.8164965809277261, 7.874368670764581, -0.5773502691896258],
+      [8, -1.4099025766973186, 2.5, -0.5773502691896258, 0.8164965809277261, -1.4099025766973186, 0.5773502691896258],
+      [9, -2.5, 0.9583694396573832, -0.5773502691896258, -0.8164965809277261, -4.041630560342616, 0.8164965809277261],
+      [10, -0.05456351736994369, -2.5, 0.5773502691896258, -0.8164965809277261, -9.945436482630056, 0.5773502691896258],
+      [11, 2.5, 1.1126983722080919, 0.5773502691896258, 0.8164965809277261, 3.887301627791908, 0.8164965809277261],
+      [12, 1.519029611437206, 2.5, -0.5773502691896258, 0.8164965809277261, 1.519029611437206, 0.5773502691896258],
+      [13, -2.0165042944955314, -2.5, -0.5773502691896258, -0.8164965809277261, -7.983495705504469, -0.5773502691896258],
+      [14, -2.5, -1.8162338159264326, -0.5773502691896258, 0.8164965809277261, -6.816233815926433, -0.8164965809277261],
+      [15, 0.5520382004282691, 2.5, 0.5773502691896258, 0.8164965809277261, 0.5520382004282691, -0.5773502691896258],
+      [16, 2.5, -0.25483399593904243, 0.5773502691896258, -0.8164965809277261, 5.254833995939043, -0.8164965809277261],
+      [17, 0.9124278936389931, -2.5, -0.5773502691896258, -0.8164965809277261, 9.087572106361007, -0.5773502691896258],
+      [18, -2.5, 2.3259018078045175, -0.5773502691896258, 0.8164965809277261, -2.6740981921954825, -0.8164965809277261],
+      [19, -2.3768939877062554, 2.5, 0.5773502691896258, 0.8164965809277261, -2.3768939877062554, -0.5773502691896258],
+      [20, 1.158639918226482, -2.5, 0.5773502691896258, -0.8164965809277261, 8.841360081773518, 0.5773502691896258],
+      [21, 2.5, -0.603030380330007, 0.5773502691896258, 0.8164965809277261, 5.603030380330007, 0.8164965809277261],
+      [22, 0.3058261758407803, 2.5, -0.5773502691896258, 0.8164965809277261, 0.3058261758407803, 0.5773502691896258],
+      [23, -2.5, -1.468037431535468, -0.5773502691896258, -0.8164965809277261, -6.468037431535468, 0.8164965809277261],
+      [24, -1.7702922699080426, -2.5, 0.5773502691896258, -0.8164965809277261, -8.229707730091958, 0.5773502691896258],
+      [25, 1.7652416360246947, 2.5, 0.5773502691896258, 0.8164965809277261, 1.7652416360246947, -0.5773502691896258],
+      [26, 2.5, 1.4608947565990564, 0.5773502691896258, -0.8164965809277261, 3.5391052434009436, -0.8164965809277261],
+      [27, -0.3007755419574325, -2.5, -0.5773502691896258, -0.8164965809277261, -9.699224458042568, -0.5773502691896258],
+      [28, -2.5, 0.6101730552664186, -0.5773502691896258, 0.8164965809277261, -4.389826944733581, -0.8164965809277261],
+      [29, -1.1636905521098297, 2.5, 0.5773502691896258, 0.8164965809277261, -1.1636905521098297, -0.5773502691896258],
+      [30, 2.3718433538229076, -2.5, 0.5773502691896258, -0.8164965809277261, 7.628156646177093, 0.5773502691896258],
+      [31, 2.5, -2.318759132868106, 0.5773502691896258, 0.8164965809277261, 7.318759132868106, 0.8164965809277261],
+      [32, -0.9073772597556453, 2.5, -0.5773502691896258, 0.8164965809277261, -0.9073772597556453, 0.5773502691896258],
+      [33, -2.5, 0.2476913210026308, -0.5773502691896258, -0.8164965809277261, -4.75230867899737, 0.8164965809277261],
+      [34, -0.5570888343116169, -2.5, 0.5773502691896258, -0.8164965809277261, -9.442911165688383, 0.5773502691896258],
+      [35, 2.5, 1.8233764908628443, 0.5773502691896258, 0.8164965809277261, 3.1766235091371557, 0.8164965809277261],
+    ],
+  },
+  "egg": {
+    params: {W_r: 6.0, W_l: 3.0, H: 4.0},
+    p0: [0.3, 0.1], v0: [0.0037139067635410376, 0.009284766908852594], N: 35,
+    rows: [
+      [1, 1.0130115037954102, 1.8825287594885256, 0.0037139067635410376, 0.009284766908852594, 1.0771258924598022, -0.14523938232136407],
+      [2, 0.6710871746280256, -1.9493180578573597, -0.0008887911044874448, -0.009960424206457473, -1.2392373646829422, -0.23850569600952565],
+      [3, -0.8272296442747418, 1.6683677269225141, -0.0038264469697219983, 0.00923895576285033, 2.0311037573069943, -0.3238825663796312],
+      [4, 2.9167962024549343, -0.4677605813730299, 0.008685742326696718, -0.004955590805769691, -0.1590139917424846, -0.1713405012346783],
+      [5, -1.4823445573534126, 0.30595457407112137, -0.00984883161671394, 0.0017321996956517203, 2.93805175833167, -0.058482708664966396],
+      [6, 2.9990645722660974, 0.049940815542520056, 0.009983721814651313, -0.000570349653857621, 0.01665059188287473, -0.09437505120568365],
+      [7, -1.4443198534838881, -0.5398603289860613, -0.009913051844069388, -0.001315827928261336, -2.7838905102518017, -0.07519719888140988],
+      [8, 2.812607557205429, 0.6957773363978224, 0.009603609936530333, 0.002787593260677722, 0.24250941491557723, -0.22349112071447266],
+      [9, -0.16616823847565954, -1.987690168801475, -0.007429754122098795, -0.006693187109677717, -1.6542010516518846, -0.6365101910340384],
+      [10, -1.4916006933421857, 0.21135487428014232, -0.005162145198608972, 0.008564593215586969, 3.0008330315338294, -0.8127372732696937],
+      [11, 0.01950346240671208, 1.9999577345483133, 0.006453623947086163, 0.007638765472875575, 1.5610446986262103, -0.6420455748309684],
+      [12, 2.5522405756918642, -1.05115133571444, 0.006387166941426015, -0.007694419956199078, -0.39068367369544954, -0.13023878464649907],
+      [13, -1.0121628401590228, 1.4760466026977268, -0.008157640034124326, 0.0057838489843401045, 2.1718777299266137, 0.07019123839484703],
+      [14, 2.076531074110559, -1.4434555295852836, 0.0072673093381297165, -0.00686922229833426, -0.6074488830437632, 0.242250228864549],
+      [15, 0.9543129324717452, 1.896111439167268, -0.0031853340417843257, 0.00947911636399986, 1.1045121851147157, 0.5177749448845916],
+      [16, -1.4324400225582716, -0.5934690208494555, -0.006920421365059307, -0.007218571058736672, -2.7488143612880322, 0.5459490087076463],
+      [17, 1.5953475817724796, -1.6937619002724476, 0.009398652621792989, -0.003415454419965779, -0.8153105044965356, 0.7350774229260152],
+      [18, 2.742140979099815, 0.8112166036930817, 0.0041625819501201105, 0.00909246454535481, 0.2876297599958928, 0.5262539759840257],
+      [19, -1.4123410623951567, 0.6736866709515814, -0.009994525128584775, -0.000330858661799119, 2.696513771103648, 0.2909601243279685],
+      [20, 2.0305579195786922, -1.4722370786189827, 0.008486499664626298, -0.0052895485102509255, -0.6273348510219902, 0.4470902878467035],
+      [21, 1.7628449389401863, 1.6182813546411197, -0.0008630078847081359, 0.009962691272489159, 0.742668144752946, 0.5118127489909122],
+      [22, -1.452321625052591, -0.5002433139620539, -0.008350253110965128, -0.005502115318931189, -2.809876145028479, 0.38133413573223707],
+      [23, 2.323554625969493, -1.2651032281352057, 0.009800942691038362, -0.001985326765794936, -0.4985867683144138, 0.6337106263820951],
+      [24, 2.3279646435320496, 1.261494813212519, 1.7454342846516882e-05, 0.009999984767284191, 0.49659343351258944, 0.6328115850987317],
+      [25, -1.4523030577384808, 0.500339135624287, -0.009803254038636019, -0.001973882026354825, 2.8098132283541943, 0.38028981218322666],
+      [26, 1.767340865106807, -1.616100418569138, 0.00835625240488226, -0.005492999703795686, -0.740727716076223, 0.5114359546672136],
+      [27, 2.0288309862894467, 1.4732948455111374, 0.000843396286128909, 0.009964370662743534, 0.6280806828614272, 0.44822545362760513],
+      [28, -1.4134549875243954, -0.669520555810782, -0.008489516507471597, -0.005284705239591636, -2.699224644696121, 0.29208320203081206],
+      [29, 2.736901891990418, -0.8190422682402403, 0.009993516863793838, -0.00036002873922538585, -0.29077675386419016, 0.5282961795070743],
+      [30, 1.6133277546332179, 1.6861756276168123, -0.004092213091785799, 0.009124351594026666, 0.8074730126287613, 0.7336494216105467],
+      [31, -1.4329490734652508, 0.5912802724861144, -0.009410609879808378, -0.0033823692421220066, 2.750244494664297, 0.5422475878414947],
+      [32, 0.9730537379585418, -1.8918734304674958, 0.0069586200357554555, -0.007181755161378225, -1.0957478414021418, 0.5183224439235653],
+      [33, 2.0785075956709766, 1.4421906446233583, 0.0031471542872039686, 0.009491860718138128, 0.6065924054591401, 0.24695777512348566],
+      [34, -1.0259745889070317, -1.4589957842705354, -0.007306243227522635, -0.006827796855522256, -2.18367072954253, 0.07679998919073422],
+      [35, 2.5933193395519263, 1.0054727584808525, 0.008265707287824862, 0.005628328617982335, 0.3698725307282767, -0.1192406034920464],
+    ],
+  },
+  "ellipse": {
+    params: {W: 6.0, H: 4.0},
+    p0: [0.3, 0.1], v0: [0.0037139067635410376, 0.009284766908852594], N: 35,
+    rows: [
+      [1, 1.0130115037954102, 1.8825287594885256, 0.0037139067635410376, 0.009284766908852594, 1.0771258924598022, -0.14523938232136407],
+      [2, 0.6710871746280256, -1.9493180578573597, -0.0008887911044874448, -0.009960424206457473, -1.2392373646829422, -0.23850569600952565],
+      [3, -0.9242862625316743, 1.902710920402809, -0.0038264469697219983, 0.00923895576285033, 2.0229979797421964, 0.17905084257604217],
+      [4, -0.7993171267249305, -1.9277035423211282, 0.0003260813682146167, -0.009994682133079734, -1.9638655954759185, 0.21320759213555956],
+      [5, 0.8162363270844627, 1.9245499627875677, 0.0038674546852317344, 0.009221865009729815, 1.1696729581781165, -0.2092315058857723],
+      [6, 0.9100142456400493, -1.9057659962139661, 0.000244757419387594, -0.009997004241554301, -1.1253054992268325, -0.18359646497487145],
+      [7, -0.6903887758435672, 1.9463199849047568, -0.003836688431782686, 0.009234707460305653, 1.9116653471068288, 0.23517807371305685],
+      [8, -1.0015714171691392, -1.885247369128082, -0.0008094896637511659, -0.009967182474715711, -2.0591442404833558, 0.15026327254439892],
+      [9, 0.5488640053194922, 1.9662427004783214, 0.0037343278094851234, 0.009276572417186532, 1.2985819682064792, -0.2563785575284203],
+      [10, 1.0728994892646866, -1.8677243058433524, 0.001354231764367253, -0.009907878497861119, -1.0493814179557563, -0.1138796316500417],
+      [11, -0.39441751876086495, 1.9826396345270534, -0.0035610377107299844, 0.009344464159209927, 1.767168173949959, 0.2724212073744676],
+      [12, -1.1233160153813595, -1.8545033632380448, -0.0018662143577704783, -0.009824319007994969, -2.1154135587622367, 0.0751826805767361],
+      [13, 0.23041208885766995, 1.9940924161475064, 0.0033181734104423257, 0.009433436553994173, 1.4557591305724134, -0.28299958801599046],
+      [14, 1.1524327353757178, -1.8465461802372136, 0.002334369611035933, -0.009723719376816252, -1.012843192022217, -0.03495826316291964],
+      [15, -0.06071024628823074, 1.99959043206304, -0.0030080971774497363, 0.00953684179228212, 1.6011483434719351, 0.2879145595382102],
+      [16, -1.1600626340159517, -1.8444215817383536, -0.0027496698324338043, -0.00961453669256108, -2.132236364985844, -0.005976357825641654],
+      [17, -0.11050677067910653, 1.9986426787124052, 0.0026345556424286877, 0.00964671532527767, 1.626030996024342, -0.28707448459298557],
+      [18, 1.1461613301368878, -1.8482801862270457, 0.0031052012815831003, -0.00950566804600574, -1.0157116492602263, 0.04678956831869013],
+      [19, 0.27897029440319254, 1.9913340670504849, -0.0022030471075613132, 0.009754311018307014, 1.4316099962624869, 0.2804949839056545],
+      [20, -1.110811132038986, -1.8578480537006334, -0.0033960101249456255, -0.009405695892982437, -2.109671777842107, -0.08665219479391154],
+      [21, -0.4405697091670938, 1.978315594569663, 0.0017210943807761492, 0.009850778351605555, 1.789919955424779, -0.26829899434700927],
+      [22, 1.0542499066458046, -1.8724383549369006, 0.0036187930220708668, -0.009322249570967894, -1.057999910212436, 0.12475435177822894],
+      [23, 0.5915723877757881, 1.9607302619201454, -0.0011983387402323767, 0.009927939577961693, 1.2777712490188748, 0.2507169939335217],
+      [24, -0.9769408371042001, -1.890982883852045, -0.003771518581734922, -0.009261514324754245, -2.04766023385495, -0.16032260549684654],
+      [25, -0.7287849924055354, 1.9400884784914618, 0.000646390670213091, 0.009979087087577769, 1.930132562501834, -0.22808642613272367],
+      [26, 0.8796728781742316, -1.912087355908274, 0.003853061211653514, -0.00922788812780319, -1.139608942461332, 0.1926372230598336],
+      [27, 0.8496376203486118, 1.918114341869043, -7.841449817082118e-05, 0.00999969255359766, 1.1538167602785787, 0.20084893804416773],
+      [28, -0.7636753008283732, -1.9341147886082664, -0.0038629127183275034, -0.009223768499403241, -1.9468507410892366, -0.22104863794499405],
+      [29, -0.9521897009478003, 1.8965857948088298, -0.0004915198686702718, 0.00998791310628513, 2.036086297589081, -0.1695442235175076],
+      [30, 0.6307239627585078, -1.955299043090874, 0.003801016174590696, -0.009249447337030457, -1.258762387734451, 0.24499184460225426],
+      [31, 1.0350715745912502, 1.877187829999757, 0.0010492293131891504, 0.009944803560068168, 1.0668828965753907, 0.13479995443858428],
+      [32, -0.4832135561831854, -1.9738855825357713, -0.003667745285466856, -0.009303098651574944, -1.8108779586238775, -0.26399751045689024],
+      [33, -1.0973849445278792, 1.8613909116600058, -0.0015812283038463826, 0.009874194501381618, 2.1034973385499316, -0.09731818323176397],
+      [34, 0.3241712627038522, -1.9882893811780344, 0.003464032021773242, -0.009380857218406508, -1.4091780844713688, 0.2776991925076102],
+      [35, 1.138588172450298, 1.8503593613201241, 0.0020754275946303063, 0.009782259468008756, 1.0191783926255598, 0.05785931043719522],
+    ],
+  },
+};
+// === REFERENCE END ===
+if (typeof module !== "undefined" && module.exports) { module.exports = REFERENCE; }
+</script>
+
+
+<script id="billiard-ui">
+"use strict";
+/* 画面まわり。数値核（billiard-core）には一切手を入れない。
+   ここでの決めごと:
+     - 色は必ず CSS カスタムプロパティから読む。生の色コードを書かない。
+     - 軌道図はアスペクト比 1:1 固定、断面は横いっぱいに伸ばす（差し戻し R1）。 */
+
+(function () {
+
+  /* ---------------------------------------------------------------- 共通 */
+
+  function readTokens() {
+    var cs = getComputedStyle(document.documentElement);
+    function t(name) { return cs.getPropertyValue(name).trim(); }
+    return {
+      boundary: t("--boundary"),
+      orbit: t("--orbit"),
+      dash: t("--dash"),
+      dot: t("--dot"),
+      tick: t("--ink-3"),
+      rule: t("--rule"),
+      mono: t("--mono")
+    };
+  }
+
+  /* CSS 上のサイズと実ピクセルを devicePixelRatio で合わせる。
+     これをやらないと高 DPI 画面で線がぼやける。 */
+  function fitCanvas(cv) {
+    var dpr = window.devicePixelRatio || 1;
+    /* getBoundingClientRect() ではなく clientWidth / clientHeight を使う。
+       box-sizing:border-box と 1px のボーダーがあるので rect は内容ボックスより
+       2px 大きく、それを canvas.width にすると描画面が内容ボックスへ縮小されて
+       表示される。すると「描いた位置」と「マウス座標」が数 px ずれ、
+       断面のホバーが隣の点を拾う。clientWidth はボーダーを含まないので一致する。 */
+    var w = Math.max(1, cv.clientWidth || Math.round(cv.getBoundingClientRect().width));
+    var h = Math.max(1, cv.clientHeight || Math.round(cv.getBoundingClientRect().height));
+
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+    }
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx: ctx, w: w, h: h };
+  }
+
+  function strokePolyline(ctx, pts, project, closed) {
+    ctx.beginPath();
+    for (var i = 0; i < pts.length; i++) {
+      var s = project(pts[i][0], pts[i][1]);
+      if (i === 0) ctx.moveTo(s[0], s[1]); else ctx.lineTo(s[0], s[1]);
+    }
+    if (closed) ctx.closePath();
+    ctx.stroke();
+  }
+
+  /* ---------------------------------------------------------------- 軌道図 */
+
+  var ORBIT_MARGIN = 14;
+
+  /* 等倍スケール（x と y で同じ倍率）を使うのでアスペクト比が 1:1 に保たれる。
+     余りは左右か上下の余白になる。形状が歪むと反射の見え方を誤解するため、
+     ここは枠の形に合わせて伸ばしてはいけない（受け入れ基準16）。 */
+  function orbitProjector(shape, P, w, h) {
+    var bb = shape.bbox(P);
+    var bw = bb[2] - bb[0], bh = bb[3] - bb[1];
+    if (!(bw > 0) || !(bh > 0)) return null;
+
+    var scale = Math.min((w - 2 * ORBIT_MARGIN) / bw, (h - 2 * ORBIT_MARGIN) / bh);
+    var cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
+
+    return function (x, y) {
+      // y は画面が下向き正なので反転する
+      return [w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale];
+    };
+  }
+
+  function drawOrbit(cv, shape, P, p0, collisions, upto, hi, T) {
+    var g = fitCanvas(cv), ctx = g.ctx;
+    var S = orbitProjector(shape, P, g.w, g.h);
+    if (!S) return;
+
+    ctx.strokeStyle = T.boundary;
+    ctx.lineWidth = 1;
+    shape.boundaryPath(P).forEach(function (sub) {
+      strokePolyline(ctx, sub.pts, S, sub.closed);
+    });
+
+    var n = Math.min(upto, collisions.length);
+    if (n > 0) {
+      /* 線分を1本ずつ描くと重なりが濃くなり、軌道がどこを密に通るかが見える
+         （matplotlib 版が alpha=0.1 で1本ずつ描いているのと同じ効果）。
+         ただし本数が増えると描画呼び出しのコストが効いてくるので、
+         多いときは1本のパスにまとめる。まとめると重なりは濃くならない。 */
+      var perSegment = n <= 3000;
+      var alpha = perSegment
+        ? Math.min(0.9, Math.max(0.05, 6 / Math.sqrt(n)))
+        : Math.min(0.9, Math.max(0.04, 12 / Math.sqrt(n)));
+
+      ctx.strokeStyle = T.orbit;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = alpha;
+
+      var prev = S(p0[0], p0[1]);
+      if (perSegment) {
+        for (var k = 0; k < n; k++) {
+          var cur = S(collisions[k].x, collisions[k].y);
+          ctx.beginPath();
+          ctx.moveTo(prev[0], prev[1]);
+          ctx.lineTo(cur[0], cur[1]);
+          ctx.stroke();
+          prev = cur;
+        }
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(prev[0], prev[1]);
+        for (var j = 0; j < n; j++) {
+          var q = S(collisions[j].x, collisions[j].y);
+          ctx.lineTo(q[0], q[1]);
+        }
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // 衝突点。多すぎると境界が点で埋まって形が読めなくなるので打ち切る。
+      if (n <= 2000) {
+        ctx.fillStyle = T.dot;
+        for (var m = 0; m < n; m++) {
+          var d = S(collisions[m].x, collisions[m].y);
+          ctx.fillRect(d[0] - 1.25, d[1] - 1.25, 2.5, 2.5);
+        }
+      }
+    }
+
+    // 相互ハイライト（Step 5 で断面のホバーから渡ってくる）
+    if (hi != null && hi >= 1 && hi <= n) {
+      var c = collisions[hi - 1];
+      var from = hi >= 2 ? [collisions[hi - 2].x, collisions[hi - 2].y] : p0;
+      var a = S(from[0], from[1]), b = S(c.x, c.y);
+
+      ctx.strokeStyle = T.dash;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(b[0], b[1], 5, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }
+
+  /* ------------------------------------------------------------ 断面 */
+
+  var SEC_PAD = { l: 38, r: 12, t: 12, b: 26 };
+
+  /* 断面は軌道図と違って縦横を独立にとる。
+     横軸 s の幅は形状で桁が違う（スタジアム W=H=5 で ±12.85、卵型は ±π）が、
+     縦軸はつねに sinφ ∈ [-1, 1]。1:1 にすると縦が潰れて何も読めない。 */
+  function sectionProjector(shape, P, w, h) {
+    var rg = shape.range(P);
+    var lo = rg[0], hi = rg[1];
+    if (!(hi > lo)) return null;
+
+    var iw = w - SEC_PAD.l - SEC_PAD.r;
+    var ih = h - SEC_PAD.t - SEC_PAD.b;
+    if (!(iw > 0) || !(ih > 0)) return null;
+
+    return {
+      lo: lo, hi: hi, iw: iw, ih: ih,
+      X: function (s) { return SEC_PAD.l + (s - lo) / (hi - lo) * iw; },
+      Y: function (v) { return SEC_PAD.t + (1 - v) / 2 * ih; }
+    };
+  }
+
+  function fmtTick(v) {
+    if (Math.abs(v) >= 100) return v.toFixed(0);
+    if (Math.abs(v) >= 10) return v.toFixed(1);
+    return v.toFixed(2);
+  }
+
+  function drawSection(cv, shape, P, pts, upto, hi, T) {
+    var g = fitCanvas(cv), ctx = g.ctx;
+    var pr = sectionProjector(shape, P, g.w, g.h);
+    if (!pr) return;
+
+    // sinφ = 0 の水平線
+    ctx.strokeStyle = T.rule;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(SEC_PAD.l, pr.Y(0));
+    ctx.lineTo(SEC_PAD.l + pr.iw, pr.Y(0));
+    ctx.stroke();
+
+    // 直線部と曲線部の境界（setting.py の赤い破線と同じ位置）
+    ctx.save();
+    ctx.strokeStyle = T.dash;
+    ctx.setLineDash([4, 3]);
+    shape.dashes(P).forEach(function (d) {
+      if (d <= pr.lo || d >= pr.hi) return;
+      var x = pr.X(d);
+      ctx.beginPath();
+      ctx.moveTo(x, SEC_PAD.t);
+      ctx.lineTo(x, SEC_PAD.t + pr.ih);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // 点
+    var n = Math.min(upto, pts.length);
+    ctx.fillStyle = T.dot;
+    for (var k = 0; k < n; k++) {
+      ctx.fillRect(pr.X(pts[k].s) - 0.6, pr.Y(pts[k].sin) - 0.6, 1.2, 1.2);
+    }
+
+    // 枠は点の後に描いて、はみ出しを隠す
+    ctx.strokeStyle = T.boundary;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(SEC_PAD.l, SEC_PAD.t, pr.iw, pr.ih);
+
+    // 目盛
+    ctx.fillStyle = T.tick;
+    ctx.font = "10px " + T.mono;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText("+1", SEC_PAD.l - 5, pr.Y(1));
+    ctx.fillText("0", SEC_PAD.l - 5, pr.Y(0));
+    ctx.fillText("-1", SEC_PAD.l - 5, pr.Y(-1));
+
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.fillText(fmtTick(pr.lo), SEC_PAD.l, SEC_PAD.t + pr.ih + 5);
+    ctx.textAlign = "right";
+    ctx.fillText(fmtTick(pr.hi), SEC_PAD.l + pr.iw, SEC_PAD.t + pr.ih + 5);
+    if (pr.lo < 0 && pr.hi > 0) {
+      ctx.textAlign = "center";
+      ctx.fillText("0", pr.X(0), SEC_PAD.t + pr.ih + 5);
+    }
+
+    // 相互ハイライト
+    if (hi != null && hi >= 1 && hi <= n) {
+      var p = pts[hi - 1];
+      ctx.strokeStyle = T.dash;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(pr.X(p.s), pr.Y(p.sin), 5, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }
+
+  /* ------------------------------------------------------------ 状態 */
+
+  /* 衝突回数の上限。これを超える値を入れても丸める（受け入れ基準9）。
+     暫定値。実測して 5 秒を超えるようなら下げる（docs/requirements.md 未決事項4）。 */
+  var MAX_N = 20000;
+
+  /* 既定値の出典は docs/contracts.md §4（main/stadium/poincare.py と同じ）。 */
+  var state = {
+    shapeId: "stadium",
+    params: { W: 5.0, H: 5.0 },
+    p0: [0.5, 0.0],
+    v0: [0.02 / Math.sqrt(29), 0.05 / Math.sqrt(29)],
+    N: 2000,
+    pendingN: 2000,   // 入力欄の値。「計算」を押すまで N には入らない
+    frame: 2000,
+    hi: null,
+    collisions: [],
+    pts: [],
+    stop: null,
+    ms: 0,
+    dirty: false,     // 衝突回数を変えたが未計算
+    invalid: false,   // 初期条件が不正
+    mode: "all",      // "all" = 一括表示 / "anim" = アニメーション
+    speed: 4          // アニメーション1コマあたりに進める衝突数
+  };
+
+  function shape() { return Billiard.SHAPES[state.shapeId]; }
+
+  var el = {
+    shapeSel: document.getElementById("shape-select"),
+    params: document.getElementById("shape-params"),
+    x: document.getElementById("in-x"),
+    y: document.getElementById("in-y"),
+    vx: document.getElementById("in-vx"),
+    vy: document.getElementById("in-vy"),
+    n: document.getElementById("in-n"),
+    compute: document.getElementById("btn-compute"),
+    msgPos: document.getElementById("msg-position"),
+    msgVel: document.getElementById("msg-velocity"),
+    msgBound: document.getElementById("msg-bound"),
+    msgNotice: document.getElementById("msg-notice")
+  };
+
+  var orbitCv = document.getElementById("orbit-canvas");
+  var sectionCv = document.getElementById("section-canvas");
+  var statusEl = document.getElementById("sim-status");
+  var stopEl = document.getElementById("sim-stop");
+
+  /* ------------------------------------------------------------ 計算と描画 */
+
+  function recompute() {
+    var sh = shape();
+    var t0 = performance.now();
+    var run = Billiard.simulate(sh, state.params, state.p0, state.v0, state.N);
+    state.ms = performance.now() - t0;
+
+    state.collisions = run.collisions;
+    state.stop = run.stop;
+    state.pts = Billiard.section(sh, state.params, run.collisions);
+    // 一括表示なら最後まで、アニメーションなら頭から見せる。
+    state.frame = (state.mode === "anim") ? 0 : run.collisions.length;
+    state.hi = null;
+    // 索引は捨てるだけ。作り直しは最初にホバーされたとき（pickAt）に任せる。
+    // ここで作ると、この関数は再生ブロックより前に走るため
+    // まだ var の初期化が済んでおらず PICK_NX が undefined になる。
+    pickIndex = null;
+  }
+
+  /* 未計算・入力エラーのとき、古い図をそのまま残さないための空表示
+     （受け入れ基準7・8）。 */
+  function drawEmpty(text) {
+    var T = readTokens();
+    [orbitCv, sectionCv].forEach(function (cv) {
+      if (!cv) return;
+      var g = fitCanvas(cv), ctx = g.ctx;
+      if (g.w < 4 || g.h < 4) return;
+
+      ctx.save();
+      ctx.strokeStyle = T.rule;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(8.5, 8.5, g.w - 17, g.h - 17);
+      ctx.restore();
+
+      ctx.fillStyle = T.tick;
+      ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, g.w / 2, g.h / 2);
+    });
+  }
+
+  function draw() {
+    if (!orbitCv || !sectionCv) return;
+    var sh = shape();
+    var T = readTokens();
+
+    drawOrbit(orbitCv, sh, state.params, state.p0,
+      state.collisions, state.frame, state.hi, T);
+    drawSection(sectionCv, sh, state.params,
+      state.pts, state.frame, state.hi, T);
+  }
+
+  function updateStatus() {
+    if (!statusEl) return;
+    var sh = shape();
+    var ps = sh.params.map(function (spec) {
+      return spec.label + "=" + state.params[spec.key];
+    }).join("  ");
+
+    var tail;
+    if (state.invalid) tail = "計算していません";
+    else if (state.dirty) tail = "未計算（衝突回数 " + state.pendingN + " で「計算」を押してください）";
+    else tail = "衝突 " + state.collisions.length + " 回   計算 " + state.ms.toFixed(1) + " ms";
+
+    statusEl.textContent = sh.label + "   " + ps + "   " + tail;
+
+    if (stopEl) {
+      // 交点が求まらずに止まった場合。黙って短い軌道を出さない。
+      stopEl.textContent = (!state.invalid && !state.dirty && state.stop)
+        ? "衝突 " + state.stop.at + " 回目で計算が止まりました（" + state.stop.reason + "）"
+        : "";
+    }
+  }
+
+  /* ------------------------------------------------------------ 入力の検証 */
+
+  function positionProblem() {
+    var sh = shape(), P = state.params, p = state.p0;
+    if (!isFinite(p[0]) || !isFinite(p[1])) return "x と y に数値を入れてください";
+    if (sh.contains(P, p)) return "";
+    // シナイだけは「外壁の内側だが障害物の中」という間違え方をしやすいので分けて出す。
+    if (state.shapeId === "sinai" &&
+        Math.abs(p[0]) < P.W / 2 && Math.abs(p[1]) < P.H / 2) {
+      return "初期位置が中央の障害物（D = " + P.D + "）の内側です";
+    }
+    return "初期位置が領域内にありません";
+  }
+
+  function velocityProblem() {
+    var v = state.v0;
+    if (!isFinite(v[0]) || !isFinite(v[1])) return "vx と vy に数値を入れてください";
+    if (v[0] === 0 && v[1] === 0) return "初速度が 0 です";
+    return "";
+  }
+
+  function notice(text) {
+    if (el.msgNotice) el.msgNotice.textContent = text || "";
+  }
+
+  /* 入力の状態を見て、描くか・空表示にするかを決める唯一の場所。
+     recompute を呼ぶかどうかも含めてここに集約し、
+     「片方の図だけ古いまま」が起きないようにする（受け入れ基準12・18）。 */
+  function update(opts) {
+    var pos = positionProblem();
+    var vel = velocityProblem();
+
+    el.msgPos.textContent = pos;
+    el.msgVel.textContent = vel;
+    el.x.classList.toggle("bad", !!pos);
+    el.y.classList.toggle("bad", !!pos);
+    el.vx.classList.toggle("bad", !!vel);
+    el.vy.classList.toggle("bad", !!vel);
+
+    state.invalid = !!(pos || vel);
+    el.compute.disabled = state.invalid;
+
+    if (state.invalid) {
+      drawEmpty("初期条件を直してください");
+    } else if (state.dirty) {
+      drawEmpty("「計算」を押すと表示されます");
+    } else {
+      if (opts && opts.recompute) recompute();
+      draw();
+    }
+    syncFrameUI();
+    updateStatus();
+  }
+
+  /* ------------------------------------------------------------ 入力欄 */
+
+  var paramInputs = {};   // key -> {range, num}
+
+  function buildShapeSelect() {
+    Billiard.SHAPE_ORDER.forEach(function (id) {
+      var op = document.createElement("option");
+      op.value = id;
+      op.textContent = Billiard.SHAPES[id].label;
+      el.shapeSel.appendChild(op);
+    });
+  }
+
+  /* 形状ごとに必要なパラメータだけを出す（受け入れ基準1）。
+     欄の定義は shape.params にあるので、ここは形状を知らない。 */
+  function buildParams() {
+    var sh = shape();
+    el.params.innerHTML = "";
+    paramInputs = {};
+
+    sh.params.forEach(function (spec) {
+      var row = document.createElement("div");
+      row.className = "param";
+
+      var lab = document.createElement("label");
+      lab.textContent = spec.label;
+
+      var rng = document.createElement("input");
+      rng.type = "range";
+      rng.min = spec.min;
+      rng.max = spec.max;
+      rng.step = spec.step;
+      rng.setAttribute("aria-label", spec.label);
+
+      var num = document.createElement("input");
+      num.type = "number";
+      num.step = spec.step;
+      num.setAttribute("aria-label", spec.label);
+
+      row.appendChild(lab);
+      row.appendChild(rng);
+      row.appendChild(num);
+      el.params.appendChild(row);
+
+      /* スライダーは input（ドラッグ中も即時に追随）。
+         W を振ってカオス化がどこで始まるかを見る、という本来の用途がここ。 */
+      rng.addEventListener("input", function () {
+        state.params[spec.key] = Number(rng.value);
+        num.value = rng.value;
+        afterGeometryChange();
+      });
+
+      /* 数値欄は change（blur / Enter）。入力中の1文字ごとには再計算しない
+         （受け入れ基準6）。 */
+      num.addEventListener("change", function () {
+        var v = Number(num.value);
+        if (!isFinite(v)) { num.value = state.params[spec.key]; return; }
+        if (v < spec.min) v = spec.min;     // 物理的に成り立たない値だけ弾く
+        num.value = v;
+        state.params[spec.key] = v;
+        rng.value = Math.min(spec.max, v);  // スライダーの範囲外は端で止める
+        afterGeometryChange();
+      });
+
+      paramInputs[spec.key] = { range: rng, num: num };
+    });
+  }
+
+  function syncInputs() {
+    el.shapeSel.value = state.shapeId;
+    shape().params.forEach(function (spec) {
+      var pi = paramInputs[spec.key];
+      if (!pi) return;
+      var v = state.params[spec.key];
+      pi.num.value = v;
+      pi.range.value = Math.min(spec.max, Math.max(spec.min, v));
+    });
+    el.x.value = state.p0[0];
+    el.y.value = state.p0[1];
+    el.vx.value = state.v0[0];
+    el.vy.value = state.v0[1];
+    el.n.value = state.pendingN;
+  }
+
+  /* 形状・形状パラメータが変わったときの後始末。
+     初期位置が新しい領域の外に出たら既定位置へ戻す（受け入れ基準4）。
+     利用者が自分で入れた初期位置が領域外の場合は戻さずエラーにする（受け入れ基準8）ので、
+     入口を分けてある。 */
+  function afterGeometryChange() {
+    var sh = shape();
+    if (!sh.contains(state.params, state.p0)) {
+      state.p0 = sh.defaultPosition(state.params);
+      notice("初期位置が新しい領域の外に出たため、領域内の既定位置 (" +
+        state.p0[0] + ", " + state.p0[1] + ") に戻しました");
+    } else {
+      notice("");
+    }
+    syncInputs();
+    update({ recompute: true });
+  }
+
+  /* ------------------------------------------------------------ 配線 */
+
+  buildShapeSelect();
+  buildParams();
+  syncInputs();
+
+  el.shapeSel.addEventListener("change", function () {
+    state.shapeId = el.shapeSel.value;
+    // 形状ごとの既定値に入れ替える。前の形状の W をそのまま持ち込むと
+    // シナイの W < D のような成り立たない組み合わせになりうる。
+    var P = {};
+    shape().params.forEach(function (spec) { P[spec.key] = spec.def; });
+    state.params = P;
+    buildParams();
+    afterGeometryChange();
+  });
+
+  function readPosition() {
+    state.p0 = [Number(el.x.value), Number(el.y.value)];
+    notice("");
+    update({ recompute: true });
+  }
+  function readVelocity() {
+    state.v0 = [Number(el.vx.value), Number(el.vy.value)];
+    notice("");
+    update({ recompute: true });
+  }
+
+  el.x.addEventListener("change", readPosition);
+  el.y.addEventListener("change", readPosition);
+  el.vx.addEventListener("change", readVelocity);
+  el.vy.addEventListener("change", readVelocity);
+
+  /* 衝突回数だけは即時に計算しない。
+     20000 回を即時再計算にすると、入力の1文字ごとに固まる（差し戻し R2）。 */
+  function clampN() {
+    var raw = el.n.value;
+    var v = Math.floor(Number(raw));
+    var msg = "";
+    if (!isFinite(v) || v < 1) {
+      v = 1;
+      msg = "1 以上にしました";
+    } else if (v > MAX_N) {
+      msg = "上限の " + MAX_N + " 回に丸めました（入力値 " + raw + "）";
+      v = MAX_N;
+    }
+    el.n.value = v;
+    state.pendingN = v;
+    el.msgBound.textContent = msg;
+    return v;
+  }
+
+  el.n.addEventListener("input", function () {
+    /* 打っている途中なので欄の値は書き換えない（丸めるのは change のとき）。
+       ただし pendingN は読んでおく。これを忘れると
+       「未計算（衝突回数 2000 で…）」のように、欄の表示と食い違う案内が出る。 */
+    var v = Math.floor(Number(el.n.value));
+    if (isFinite(v) && v >= 1) state.pendingN = v;
+    state.dirty = true;
+    update({});
+  });
+  el.n.addEventListener("change", function () {
+    clampN();
+    state.dirty = true;
+    update({});
+  });
+
+  el.compute.addEventListener("click", function () {
+    state.N = clampN();      // ボタンで blur するので change も走るが、念のため
+    state.dirty = false;
+    update({ recompute: true });
+  });
+
+  /* 枠の幅が変わるとスケールが変わるので描き直す。再計算は不要。 */
+  if (window.ResizeObserver && orbitCv) {
+    var ro = new ResizeObserver(function () {
+      if (state.invalid) drawEmpty("初期条件を直してください");
+      else if (state.dirty) drawEmpty("「計算」を押すと表示されます");
+      else draw();
+    });
+    ro.observe(orbitCv);
+    ro.observe(sectionCv);
+  } else {
+    window.addEventListener("resize", function () { draw(); });
+  }
+
+  update({ recompute: true });
+
+  // Step 5 と検証から触れるように出しておく。
+  window.__sim = {
+    state: state, update: update, draw: draw, recompute: recompute,
+    el: el, MAX_N: MAX_N, syncInputs: syncInputs
+  };
+
+  /* ------------------------------------------------------------ 再生 */
+
+  var playEl = {
+    play: document.getElementById("btn-play"),
+    frame: document.getElementById("in-frame"),
+    label: document.getElementById("frame-label"),
+    speed: document.getElementById("in-speed"),
+    hover: document.getElementById("sim-hover")
+  };
+
+  /* 動きを減らす設定の人には、モードを切り替えただけで勝手に動き出さないようにする。
+     「再生」を押したときだけ動く。既定が一括表示なので、押さなければ一切動かない。 */
+  var reduceMotion = !!(window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  var playing = false;
+  var rafId = 0;
+
+  function totalFrames() { return state.collisions.length; }
+
+  function syncFrameUI() {
+    // update() から呼ばれるが、そちらの方がこのブロックより先に走るので
+    // playEl はまだ undefined でありうる（var の巻き上げ）。
+    if (!playEl || !playEl.frame) return;
+    var total = totalFrames();
+    playEl.frame.max = total;
+    playEl.frame.value = state.frame;
+    playEl.frame.disabled = state.invalid || state.dirty || total === 0;
+    playEl.play.disabled = playEl.frame.disabled;
+    if (playEl.label) playEl.label.textContent = state.frame + " / " + total;
+    playEl.play.textContent = playing ? "一時停止" : "再生";
+  }
+
+  function stopPlay() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    playing = false;
+    syncFrameUI();
+  }
+
+  function step() {
+    rafId = 0;
+    if (!playing) return;
+
+    state.frame = Math.min(totalFrames(), state.frame + state.speed);
+    draw();
+    syncFrameUI();
+
+    if (state.frame >= totalFrames()) { stopPlay(); return; }
+    rafId = requestAnimationFrame(step);
+  }
+
+  function startPlay() {
+    if (state.invalid || state.dirty || totalFrames() === 0) return;
+    // 最後まで行った状態で押したら頭から流し直す（受け入れ基準10 の「再度押すと続きから」は
+    // 一時停止からの再開のこと。終端からの再生は先頭に戻すのが自然）。
+    if (state.frame >= totalFrames()) state.frame = 0;
+    playing = true;
+    syncFrameUI();
+    rafId = requestAnimationFrame(step);
+  }
+
+  if (playEl.play) {
+    playEl.play.addEventListener("click", function () {
+      if (playing) stopPlay(); else startPlay();      // 一時停止 → 続きから再開
+    });
+  }
+
+  if (playEl.frame) {
+    // スライダーを掴んだら再生は止める。掴んだまま動かされると取り合いになる。
+    playEl.frame.addEventListener("input", function () {
+      if (playing) stopPlay();
+      state.frame = Math.min(totalFrames(), Math.max(0, Math.floor(Number(playEl.frame.value))));
+      draw();
+      syncFrameUI();
+    });
+  }
+
+  if (playEl.speed) {
+    playEl.speed.addEventListener("change", function () {
+      state.speed = Math.max(1, Math.floor(Number(playEl.speed.value)) || 1);
+    });
+  }
+
+  // 表示モード
+  Array.prototype.forEach.call(
+    document.querySelectorAll('input[name="mode"]'), function (radio) {
+      radio.addEventListener("change", function () {
+        if (!radio.checked) return;
+        state.mode = radio.value;
+        stopPlay();
+        if (state.mode === "all") {
+          state.frame = totalFrames();
+        } else {
+          state.frame = 0;
+          // 動きを減らす設定でなければ、選んだ時点で流し始める。
+          if (!reduceMotion) { draw(); syncFrameUI(); startPlay(); return; }
+        }
+        draw();
+        syncFrameUI();
+      });
+    });
+
+  /* ------------------------------------------------------- 相互ハイライト */
+
+  /* 断面の点を拾うための格子索引。
+     20000 点を毎回なめると mousemove のたびに数ミリ秒かかるので、
+     データ座標 (s, sinφ) を固定格子に振り分けておく。
+     画面座標ではなくデータ座標で持つのは、リサイズしても作り直さなくて済むため。 */
+  var PICK_NX = 128, PICK_NY = 32, PICK_RADIUS = 8;   // RADIUS は画面 px
+
+  function buildPickIndex(sh, P, pts) {
+    var rg = sh.range(P), lo = rg[0], hi = rg[1];
+    if (!(hi > lo)) return null;
+
+    var cells = new Array(PICK_NX * PICK_NY);
+    for (var k = 0; k < pts.length; k++) {
+      var ix = Math.floor((pts[k].s - lo) / (hi - lo) * PICK_NX);
+      var iy = Math.floor((pts[k].sin + 1) / 2 * PICK_NY);
+      if (ix < 0) ix = 0; else if (ix >= PICK_NX) ix = PICK_NX - 1;
+      if (iy < 0) iy = 0; else if (iy >= PICK_NY) iy = PICK_NY - 1;
+      var c = iy * PICK_NX + ix;
+      if (!cells[c]) cells[c] = [];
+      cells[c].push(k);
+    }
+    return { lo: lo, hi: hi, cells: cells };
+  }
+
+  var pickIndex = null;
+
+  /* canvas 内の CSS ピクセル座標から、いま描かれている中で最も近い点を返す。
+     見つからなければ null。 */
+  function pickAt(px, py) {
+    if (!sectionCv) return null;
+    var sh = shape();
+    if (!pickIndex) pickIndex = buildPickIndex(sh, state.params, state.pts);
+    if (!pickIndex) return null;
+    // fitCanvas と同じ内容ボックスの寸法を使う。ここを rect にすると
+    // ボーダーのぶんだけ描画とマウスの座標系がずれる。
+    var pr = sectionProjector(sh, state.params,
+      sectionCv.clientWidth, sectionCv.clientHeight);
+    if (!pr) return null;
+
+    var span = pr.hi - pr.lo;
+    var dS = PICK_RADIUS / pr.iw * span;      // 画面半径をデータ座標へ
+    var dV = PICK_RADIUS / (pr.ih / 2);
+
+    var s = pr.lo + (px - SEC_PAD.l) / pr.iw * span;
+    var v = 1 - (py - SEC_PAD.t) / pr.ih * 2;
+
+    var ix0 = Math.floor((s - dS - pr.lo) / span * PICK_NX);
+    var ix1 = Math.floor((s + dS - pr.lo) / span * PICK_NX);
+    var iy0 = Math.floor((v - dV + 1) / 2 * PICK_NY);
+    var iy1 = Math.floor((v + dV + 1) / 2 * PICK_NY);
+    if (ix0 < 0) ix0 = 0; if (ix1 >= PICK_NX) ix1 = PICK_NX - 1;
+    if (iy0 < 0) iy0 = 0; if (iy1 >= PICK_NY) iy1 = PICK_NY - 1;
+
+    var best = null, bestD2 = PICK_RADIUS * PICK_RADIUS;
+    var limit = Math.min(state.frame, state.pts.length);
+
+    for (var iy = iy0; iy <= iy1; iy++) {
+      for (var ix = ix0; ix <= ix1; ix++) {
+        var bucket = pickIndex.cells[iy * PICK_NX + ix];
+        if (!bucket) continue;
+        for (var b = 0; b < bucket.length; b++) {
+          var k = bucket[b];
+          if (k >= limit) continue;          // まだ描かれていない点は拾わない
+          var dx = pr.X(state.pts[k].s) - px;
+          var dy = pr.Y(state.pts[k].sin) - py;
+          var d2 = dx * dx + dy * dy;
+          if (d2 <= bestD2) { bestD2 = d2; best = k; }
+        }
+      }
+    }
+    return best;
+  }
+
+  function showHover() {
+    if (!playEl.hover) return;
+    if (state.hi == null) { playEl.hover.textContent = ""; return; }
+
+    var k = state.hi - 1;
+    var p = state.pts[k], c = state.collisions[k];
+    if (!p || !c) { playEl.hover.textContent = ""; return; }
+
+    var axis = shape().axis === "angle" ? "theta" : "s";
+    playEl.hover.textContent =
+      "#" + state.hi +
+      "   " + axis + " = " + p.s.toFixed(4) +
+      "   sinφ = " + p.sin.toFixed(4) +
+      "   位置 (" + c.x.toFixed(4) + ", " + c.y.toFixed(4) + ")";
+  }
+
+  if (sectionCv) {
+    /* ホバーは「断面 → 軌道図」の一方向だけ。
+       逆向き（軌道図でホバーして断面を光らせる）は、衝突点が境界上に
+       密に重なって1点を指せないので実装しない。衝突番号スライダーで代替する
+       （差し戻し R3。docs/requirements.md の非スコープに明記してある）。 */
+    sectionCv.addEventListener("mousemove", function (ev) {
+      if (state.invalid || state.dirty) return;
+      var rect = sectionCv.getBoundingClientRect();
+      // clientLeft / clientTop はボーダーの太さ。引かないと内容ボックス基準にならない。
+      var hit = pickAt(ev.clientX - rect.left - sectionCv.clientLeft,
+                       ev.clientY - rect.top - sectionCv.clientTop);
+      var next = hit == null ? null : hit + 1;
+      if (next === state.hi) return;        // 変化がなければ描き直さない
+      state.hi = next;
+      draw();
+      showHover();
+    });
+
+    sectionCv.addEventListener("mouseleave", function () {
+      if (state.hi == null) return;
+      state.hi = null;
+      draw();
+      showHover();
+    });
+  }
+
+  syncFrameUI();
+
+  // 検証用のフック。ヒットテストの索引は閉じ込められているので、外から覗けるようにする。
+  window.__sim.debug = {
+    pickIndex: function () { return pickIndex; },
+    pickAt: pickAt,
+    buildPickIndex: buildPickIndex,
+    grid: { NX: PICK_NX, NY: PICK_NY, R: PICK_RADIUS }
+  };
+
+  /* ------------------------------------------------------------ 検算パネル */
+
+  var out = document.getElementById("verify-out");
+  var btn = document.getElementById("verify-run");
+  if (!out || !btn) return;
+
+  function fmtErr(x) {
+    if (x === 0) return "0";
+    return x.toExponential(2);
+  }
+
+  function renderVerify() {
+    var results = Billiard.selfTest(REFERENCE);
+    var allOk = results.length > 0 && results.every(function (r) { return r.ok; });
+
+    var html = '<table><thead><tr>' +
+      '<th>形状</th><th>点数</th><th>位置</th><th>速度</th><th>座標 s / θ</th><th>sinφ</th><th>判定</th>' +
+      '</tr></thead><tbody>';
+
+    results.forEach(function (r) {
+      if (r.note) {
+        html += '<tr><td>' + r.label + '</td><td colspan="5">' + r.note +
+          '</td><td class="fail">NG</td></tr>';
+        return;
+      }
+      html += '<tr>' +
+        '<td>' + r.label + '</td>' +
+        '<td>' + r.n + '</td>' +
+        '<td>' + fmtErr(r.dPos) + '</td>' +
+        '<td>' + fmtErr(r.dVel) + '</td>' +
+        '<td>' + fmtErr(r.dCoord) + '</td>' +
+        '<td>' + fmtErr(r.dSin) + '</td>' +
+        '<td class="' + (r.ok ? 'pass' : 'fail') + '">' + (r.ok ? 'OK' : 'NG') + '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    html += '<p class="verdict ' + (allOk ? 'pass' : 'fail') + '">' +
+      (allOk
+        ? '全形状が Python と一致しました（最大絶対誤差 < ' + Billiard.TOLERANCE + '）'
+        : '一致しない形状があります') +
+      '</p>';
+
+    out.innerHTML = html;
+    console.log("[検算]", results);
+  }
+
+  btn.addEventListener("click", renderVerify);
+  renderVerify();
+})();
+</script>
