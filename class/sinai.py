@@ -66,8 +66,12 @@ class Sinai:
 
         arc_length = []
         reflection_sin = []
-        
-        for i in range(self.bound_num):
+
+        # 修正(2026-08-25): 以前は range(self.bound_num) だった。
+        #   positions[0] は「初期位置」であって衝突点ではない（内点のことが多い）。
+        #   それを断面に混ぜたうえで、最後の衝突 positions[bound_num] を捨てていた。
+        #   衝突点は positions[1] 〜 positions[bound_num] なので range(1, bound_num + 1)。
+        for i in range(1, self.bound_num + 1):
 
             set_arc_length ,n= get_n_vector_arc_length(self.positions[i],self.width ,self.height ,self.dismeter )
 
@@ -75,10 +79,10 @@ class Sinai:
             v_norm = self.velocities[i] / np.linalg.norm(self.velocities[i])
 
             cross_2d = v_norm[0] * n_norm[1] - v_norm[1] * n_norm[0]
-            
-            set_reflection_sin = cross_2d 
 
-            print(f"arc:{set_arc_length},sinφ:{set_reflection_sin}")
+            set_reflection_sin = cross_2d
+
+            print(f"衝突回数:{i},arc:{set_arc_length},sinφ:{set_reflection_sin}")
 
             arc_length.append(set_arc_length)
             reflection_sin.append(set_reflection_sin)

@@ -8,7 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from setting import egg_set,egg_poincare_map
-from egg_func import find_intersection_func ,find_reflect_direction 
+from egg_func import find_intersection_func ,find_reflect_direction ,get_normal_vector
 
 class Egg:
     def __init__(self ,position ,velocity ,W_r ,W_l ,H ,bound_num):
@@ -66,18 +66,23 @@ class Egg:
 
         arc_length = []
         reflection_sin = []
-        
-        for i in range(self.bound_num):
+
+        # 修正(2026-08-25): 以前は range(self.bound_num) だった。
+        #   positions[0] は「初期位置」であって衝突点ではない（内点のことが多い）。
+        #   それを断面に混ぜたうえで、最後の衝突 positions[bound_num] を捨てていた。
+        #   衝突点は positions[1] 〜 positions[bound_num] なので range(1, bound_num + 1)。
+        #
+        # 修正(2026-08-25): 法線を egg_func.get_normal_vector に一元化し、内向きへ揃えた。
+        #   以前はここに外向きの勾配 ∇F ∝ (b²x, a²y) がインラインで書かれており、
+        #   内向きに統一されたスタジアム/シナイと符号規約が逆だった（この断面だけ上下反転）。
+        #   x == 0 を (0, sign(vy)) と速度で場合分けしていた枝も併せて解消している。
+        #   詳細は class/egg_func.py: get_normal_vector のコメント。
+        for i in range(1, self.bound_num + 1):
 
             set_arc_angle = np.arctan2(self.positions[i][1],self.positions[i][0])
 
             # jacobian = get_jacobian(W_r,W_l,H,set_arc_angle)
-            if self.positions[i][0] == 0:
-                n = np.array([0 , np.sign(self.velocities[i][1])])
-            elif self.positions[i][0] > 0:
-                n = np.array([ ((self.height /2) ** 2 * self.positions[i][0]) ,(self.width_right /2) ** 2 * self.positions[i][1]])
-            else:
-                n = np.array([ ((self.height /2) ** 2 * self.positions[i][0]) ,(self.width_left /2) ** 2 * self.positions[i][1]])
+            n = get_normal_vector(self.positions[i] ,self.width_right ,self.width_left ,self.height)
 
             n_norm = n / np.linalg.norm(n)
             v_norm = self.velocities[i] / np.linalg.norm(self.velocities[i])

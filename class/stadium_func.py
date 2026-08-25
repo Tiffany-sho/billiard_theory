@@ -116,8 +116,15 @@ def get_normal_vector(intersection ,W ,H):
             center = np.array([W /2 , 0])
         else :
             center = np.array([-W /2 , 0])
-        
-        n = intersection - center
+
+        # 修正(2026-08-25): 以前は n = intersection - center としていた。
+        #   これは円の中心から外を向くベクトル、つまり領域の「外向き」法線であり、
+        #   上の直線部(内向き)と向きが逆だった。
+        #   反射計算 v - 2(v·n̂)n̂ は n の符号に依らないため軌道は正しかったが、
+        #   断面の sinφ だけが円弧部で符号反転していた（|s| > W/2 の領域が上下反転）。
+        #   main/create_setting.py の stadium_create_setting も内向き(center - position)を
+        #   使っており、リポジトリ内で規約が食い違っていた。内向きに統一する。
+        n = center - intersection
         n_norm = np.linalg.norm(n)
 
         n = n / n_norm
@@ -132,8 +139,13 @@ def get_arc_length(intersection ,W ,H):
         else:
             if intersection[0] > 0 :
                 return  W  + H / 2 * np.pi - intersection[0]
+    # 【規約】ここが返す n は「領域の内側を向く」単位法線。
+    #   直線部・円弧部のどちらでも向きを揃えること。
+    #   ポアンカレ断面の sinφ = v̂ × n̂ はこの向きに依存するので、
+    #   区間ごとに向きが違うと接続点 s = ±W/2 で sinφ が符号反転する。
             else:
                 return  -W  - H / 2 * np.pi - intersection[0]
+        # 直線部: 上辺(y=+H/2)なら下向き、下辺(y=-H/2)なら上向き → 内向き
 
     else :
         arc = np.acos(2 * intersection[1] / H) * H / 2
