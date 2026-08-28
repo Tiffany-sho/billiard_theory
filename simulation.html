@@ -35,6 +35,7 @@
   --orbit:#000000;      /* 軌道 */
   --dash:#d32f2f;       /* 断面の境界分離線 */
   --dot:#000000;        /* 断面の点 */
+  --heat:#1b7f4b;       /* 占有領域の塗り（matplotlib 版の green に相当） */
   --ok:#1b7f4b;
   --ng:#b3261e;
   --mono:"Consolas","SF Mono",ui-monospace,monospace;
@@ -117,6 +118,25 @@ input[type=range]{width:100%; min-width:0; accent-color:var(--ink)}
 .msg.notice{color:var(--ink-2)}
 button[disabled]{opacity:.4; cursor:not-allowed}
 
+/* タブ */
+.tabs{display:flex; gap:2px; border-bottom:1px solid var(--ink); margin-bottom:14px; flex-wrap:wrap}
+.tab{
+  font:inherit; font-size:13px; padding:7px 16px; cursor:pointer;
+  background:transparent; color:var(--ink-2);
+  border:1px solid transparent; border-bottom:none; margin-bottom:-1px;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{
+  background:var(--paper); color:var(--ink); font-weight:700;
+  border-color:var(--ink); border-bottom:1px solid var(--paper);
+}
+/* 表示中のタブに属さない操作群は隠す。
+   display を CSS 側で決め打ちすると、.ctl-group(flex) と .playback(grid) で
+   レイアウトが食い違うので、hidden 属性の付け外しだけで切り替える。 */
+[data-group][hidden]{display:none !important}
+.panels.one{grid-template-columns:1fr}
+.panels.one figure:first-child{display:none}
+
 /* 再生バー */
 .modes{display:flex; gap:14px; flex-wrap:wrap}
 .modes label{display:flex; align-items:center; gap:5px; font-size:13px; cursor:pointer}
@@ -157,11 +177,13 @@ button[disabled]{opacity:.4; cursor:not-allowed}
 
   <section>
     <h2>シミュレーション</h2>
-    <p class="hint">
-      形状パラメータと初期条件は、変えた時点で描き直します（スライダーはドラッグ中も追随）。
-      衝突回数だけは「計算」を押すまで確定しません。
-      再生と相互ハイライトは Step 5 で実装します。
-    </p>
+    <div class="tabs" role="tablist">
+      <button class="tab" type="button" role="tab" data-view="single" aria-selected="true">単一軌道</button>
+      <button class="tab" type="button" role="tab" data-view="mix" aria-selected="false">重ね描き</button>
+      <button class="tab" type="button" role="tab" data-view="occupancy" aria-selected="false">占有領域</button>
+      <button class="tab" type="button" role="tab" data-view="entropy" aria-selected="false">エントロピー</button>
+    </div>
+    <p class="hint" id="view-hint"></p>
     <div class="sim-layout">
       <div class="controls">
 
@@ -176,7 +198,7 @@ button[disabled]{opacity:.4; cursor:not-allowed}
           <div id="shape-params"></div>
         </div>
 
-        <div class="ctl-group">
+        <div class="ctl-group" data-group="single occupancy entropy">
           <span class="ctl-label">初期位置</span>
           <div class="grid2">
             <label class="field"><span>x</span><input id="in-x" type="number" step="0.1"></label>
@@ -185,7 +207,7 @@ button[disabled]{opacity:.4; cursor:not-allowed}
           <p class="msg error" id="msg-position"></p>
         </div>
 
-        <div class="ctl-group">
+        <div class="ctl-group" data-group="single occupancy entropy">
           <span class="ctl-label">初速度</span>
           <div class="grid2">
             <label class="field"><span>vx</span><input id="in-vx" type="number" step="0.001"></label>
@@ -194,7 +216,7 @@ button[disabled]{opacity:.4; cursor:not-allowed}
           <p class="msg error" id="msg-velocity"></p>
         </div>
 
-        <div class="ctl-group">
+        <div class="ctl-group" data-group="single occupancy entropy">
           <label class="ctl-label" for="in-n">衝突回数</label>
           <div class="row">
             <input id="in-n" type="number" min="1" step="100">
@@ -203,7 +225,7 @@ button[disabled]{opacity:.4; cursor:not-allowed}
           <p class="msg" id="msg-bound"></p>
         </div>
 
-        <div class="ctl-group">
+        <div class="ctl-group" data-group="single">
           <span class="ctl-label">表示</span>
           <div class="modes">
             <label><input type="radio" name="mode" value="all" checked>一括表示</label>
@@ -211,21 +233,49 @@ button[disabled]{opacity:.4; cursor:not-allowed}
           </div>
         </div>
 
+        <div class="ctl-group" data-group="mix">
+          <span class="ctl-label">重ね描き</span>
+          <div class="param"><label>本数</label>
+            <input id="in-epoch" type="range" min="2" max="100" step="1" value="100">
+            <input id="in-epoch-n" type="number" min="2" step="1" value="100"></div>
+          <div class="param"><label>衝突</label>
+            <input id="in-mixn" type="range" min="50" max="3000" step="50" value="1000">
+            <input id="in-mixn-n" type="number" min="1" step="50" value="1000"></div>
+          <div class="param"><label>seed</label>
+            <input id="in-seed" type="range" min="1" max="50" step="1" value="1">
+            <input id="in-seed-n" type="number" min="1" step="1" value="1"></div>
+          <p class="msg" id="msg-mix"></p>
+        </div>
+
+        <div class="ctl-group" data-group="occupancy entropy">
+          <span class="ctl-label">格子の分割数</span>
+          <div class="param"><label>divide</label>
+            <input id="in-divide" type="range" min="4" max="120" step="1" value="50">
+            <input id="in-divide-n" type="number" min="2" step="1" value="50"></div>
+        </div>
+
+        <div class="ctl-group" data-group="entropy">
+          <span class="ctl-label">エントロピー</span>
+          <div class="param"><label>刻み</label>
+            <input id="in-step" type="range" min="10" max="500" step="10" value="100">
+            <input id="in-step-n" type="number" min="1" step="10" value="100"></div>
+        </div>
+
         <p class="msg notice" id="msg-notice"></p>
       </div>
 
       <div class="panels">
         <figure>
-          <figcaption><span>軌道図</span><span>アスペクト比 1:1</span></figcaption>
+          <figcaption><span id="cap-a">軌道図</span><span>アスペクト比 1:1</span></figcaption>
           <canvas id="orbit-canvas"></canvas>
         </figure>
         <figure>
-          <figcaption><span>ポアンカレ断面</span><span>s &times; sin&phi;</span></figcaption>
+          <figcaption><span id="cap-b">ポアンカレ断面</span><span>s &times; sin&phi;</span></figcaption>
           <canvas id="section-canvas"></canvas>
         </figure>
       </div>
     </div>
-    <div class="playback">
+    <div class="playback" data-group="single">
       <button id="btn-play" type="button">再生</button>
       <!-- 衝突番号スライダー。軌道図と断面の両方がここまでを描く。
            断面から軌道図への相互ハイライトは一方向なので、その逆向きはこれで代替する。 -->
@@ -521,6 +571,29 @@ var Billiard = (function () {
       var cx = p[0] > 0 ? W / 2 : -W / 2;
       return norm2([p[0] - cx, p[1]]) < H / 2;
     },
+    // 弧長軸なので境界パラメータ = 弧長 s。coord() の逆関数になる。
+    paramRange: function (P) { var h = P.W + P.H * Math.PI / 2; return [-h, h]; },
+    pointFromParam: function (P, s) {
+      var W = P.W, r = P.H / 2;
+      var a = W / 2, b = W / 2 + r * Math.PI, c = W + r * Math.PI;
+      if (Math.abs(s) <= a) return [s, r];                                  // 上辺
+      if (s > a && s <= b) {                                                // 右の半円
+        var t = (s - a) / r;
+        return [a + r * Math.sin(t), r * Math.cos(t)];
+      }
+      if (s > b) return [c - s, -r];                                        // 下辺（x > 0 側）
+      if (s >= -b) {                                                        // 左の半円
+        var u = (-s - a) / r;
+        return [-a - r * Math.sin(u), r * Math.cos(u)];
+      }
+      return [-c - s, -r];                                                  // 下辺（x < 0 側）
+    },
+    residual: function (P, q) {
+      var r = P.H / 2;
+      if (Math.abs(q[0]) <= P.W / 2) return Math.abs(Math.abs(q[1]) - r);
+      var cx = q[0] > 0 ? P.W / 2 : -P.W / 2;
+      return Math.abs(norm2([q[0] - cx, q[1]]) - r);
+    },
     // 上辺 → 右の半円 → 下辺 → 左の半円 を1本の閉じた折れ線にする。
     // W = 0 のときは上下辺が長さ0に潰れ、半円2つで真円になる。
     boundaryPath: function (P) {
@@ -673,6 +746,22 @@ var Billiard = (function () {
     contains: function (P, p) {
       return Math.abs(p[0]) < P.W / 2 && Math.abs(p[1]) < P.H / 2 && norm2(p) > P.D / 2;
     },
+    // 原点は外壁の右上角。外壁を時計回りにたどり、そのあと障害物。
+    paramRange: function (P) { return [0, 2 * (P.D * Math.PI / 2 + P.W + P.H)]; },
+    pointFromParam: function (P, s) {
+      var W = P.W, H = P.H, R = P.D / 2;
+      if (s <= W) return [W / 2 - s, H / 2];                                // 上辺
+      if (s <= W + H) return [-W / 2, W + H / 2 - s];                       // 左辺
+      if (s <= 2 * W + H) return [s - W - H - W / 2, -H / 2];               // 下辺
+      if (s <= 2 * (W + H)) return [W / 2, s - 2 * W - H - H / 2];          // 右辺
+      var t = (s - Math.PI * R - 2 * (W + H)) / R;                          // 障害物
+      return [R * Math.cos(t), R * Math.sin(t)];
+    },
+    residual: function (P, q) {
+      return Math.min(Math.abs(norm2(q) - P.D / 2),
+        Math.abs(Math.abs(q[0]) - P.W / 2),
+        Math.abs(Math.abs(q[1]) - P.H / 2));
+    },
     // 外壁と障害物で2本の閉じた折れ線になる（唯一、連結でない境界）。
     boundaryPath: function (P) {
       return [
@@ -769,6 +858,20 @@ var Billiard = (function () {
     contains: function (P, p) {
       return Math.abs(p[0]) < P.W / 2 && Math.abs(p[1]) < P.H / 2;
     },
+    paramRange: function (P) { var h = P.W + P.H; return [-h, h]; },
+    pointFromParam: function (P, s) {
+      var W = P.W, H = P.H;
+      var a = W / 2, b = W / 2 + H, c = W + H;
+      if (Math.abs(s) <= a) return [s, H / 2];                              // 上辺
+      if (s > a && s <= b) return [a, W / 2 + H / 2 - s];                   // 右辺
+      if (s > b) return [c - s, -H / 2];                                    // 下辺（x > 0 側）
+      if (s >= -b) return [-a, s + W / 2 + H / 2];                          // 左辺
+      return [-c - s, -H / 2];                                              // 下辺（x < 0 側）
+    },
+    residual: function (P, q) {
+      return Math.min(Math.abs(Math.abs(q[0]) - P.W / 2),
+        Math.abs(Math.abs(q[1]) - P.H / 2));
+    },
     boundaryPath: function (P) {
       return [{ closed: true, pts: boxPts(P.W, P.H) }];
     },
@@ -842,6 +945,19 @@ var Billiard = (function () {
     return null;
   }
 
+  /* 媒介変数 t 上の境界点。x = a cos t, y = (H/2) sin t。
+     ⚠️ 断面の横軸は極角 atan2(y, x) なので、a ≠ H/2 のとき t とは一致しない。
+     Python の egg_create_setting も媒介変数で撒いているのでそれに合わせている。 */
+  function eggPointFromParam(t, W_r, W_l, H) {
+    var a = (Math.abs(t) < Math.PI / 2 ? W_r : W_l) / 2;
+    return [a * Math.cos(t), (H / 2) * Math.sin(t)];
+  }
+
+  function eggResidual(q, W_r, W_l, H) {
+    var a = (q[0] > 0 ? W_r : W_l) / 2, b = H / 2;
+    return Math.abs((q[0] / a) * (q[0] / a) + (q[1] / b) * (q[1] / b) - 1);
+  }
+
   // 内向き法線（正規化していない）。楕円の勾配は外向きなので符号を反転する。
   function eggNormal(q, W_r, W_l, H) {
     var W = q[0] > 0 ? W_r : W_l;
@@ -887,6 +1003,9 @@ var Billiard = (function () {
     dashes: function () { return [-Math.PI / 2, Math.PI / 2]; },
     bbox: function (P) { return [-P.W_l / 2, -P.H / 2, P.W_r / 2, P.H / 2]; },
     contains: function (P, p) { return eggContains(p, P.W_r, P.W_l, P.H); },
+    paramRange: function () { return [-Math.PI, Math.PI]; },
+    pointFromParam: function (P, t) { return eggPointFromParam(t, P.W_r, P.W_l, P.H); },
+    residual: function (P, q) { return eggResidual(q, P.W_r, P.W_l, P.H); },
     boundaryPath: function (P) { return eggBoundary(P.W_r, P.W_l, P.H); },
     defaultPosition: function () { return [0, 0]; }
   };
@@ -909,6 +1028,9 @@ var Billiard = (function () {
     dashes: function () { return [-Math.PI / 2, Math.PI / 2]; },
     bbox: function (P) { return [-P.W / 2, -P.H / 2, P.W / 2, P.H / 2]; },
     contains: function (P, p) { return eggContains(p, P.W, P.W, P.H); },
+    paramRange: function () { return [-Math.PI, Math.PI]; },
+    pointFromParam: function (P, t) { return eggPointFromParam(t, P.W, P.W, P.H); },
+    residual: function (P, q) { return eggResidual(q, P.W, P.W, P.H); },
     boundaryPath: function (P) { return eggBoundary(P.W, P.W, P.H); },
     defaultPosition: function () { return [0, 0]; }
   };
@@ -917,6 +1039,156 @@ var Billiard = (function () {
     rect: rect, ellipse: ellipse, stadium: stadium, sinai: sinai, egg: egg
   };
   var SHAPE_ORDER = ["rect", "ellipse", "stadium", "sinai", "egg"];
+
+  /* ============================================ 多初期値・占有領域・エントロピー
+
+     移植元:
+       main/create_setting.py                    境界上に初期条件を撒く
+       main/(形状)/poincare_mix.py               それを色分けして断面に重ねる
+       class/(形状).py の create_occupany_area   断面を格子に集計する
+       class/(形状).py の shannon_entropy_value  集計からエントロピーを出す
+
+     ブロックコメントの中にパスを書くときは * / を並べないこと。
+     コメントがそこで閉じてしまい、以降がコードとして解釈される。
+
+     「境界パラメータ」t について:
+       弧長軸の形状（矩形・スタジアム・シナイ）では t は弧長 s そのもので、
+       coord() の逆関数になる。
+       角度軸の形状（楕円・卵型）では t は媒介変数の角度で、
+       x = a cos t, y = (H/2) sin t の t を指す。
+       このとき断面の横軸 atan2(y, x)（極角）とは a ≠ H/2 だと一致しない。
+       Python の egg_create_setting も媒介変数で撒いているので、それに合わせる。
+       混同すると「境界を等分したつもりが断面上では偏る」ことになるので、
+       coord() とは別の名前にしてある。 */
+
+  /* 決定的な擬似乱数（mulberry32）。
+     Math.random() だと再読み込みのたびに図が変わって比較にならない。
+     Python の np.random とは別物なので、Python の図とは一致しない。 */
+  function makeRng(seed) {
+    var a = (seed >>> 0) || 1;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /**
+   * 境界を epoch 等分し、i 番目の区画の中からランダムに1点選んで
+   * そこから領域の内側へランダムな角度で撃ち出す初期条件を作る。
+   * Python の *_create_setting と同じ手順。
+   */
+  function createSetting(shape, P, i, epoch, rand) {
+    var rg = shape.paramRange(P);
+    var span = (rg[1] - rg[0]) / epoch;
+    var t = rg[0] + span * i + rand() * span;
+
+    var q = shape.pointFromParam(P, t);
+    // 矩形の normal だけ角の場合分けで速度を見る。生成点が角に乗ることは
+    // まずないが、引数が要るのでダミーを渡す。
+    var n = shape.normal(P, q, [1, 0]);
+    var na = Math.atan2(n[1], n[0]);        // 内向き法線の向き
+    var phi = rand() * Math.PI - Math.PI / 2;
+    var sp = 1 / 100;                       // Python も /100 している
+
+    return {
+      p0: q,
+      v0: [Math.cos(na + phi) * sp, Math.sin(na + phi) * sp]
+    };
+  }
+
+  /**
+   * 断面 (s, sinφ) を divide x divide の格子に集計する。
+   * 添字は cells[iy * divide + ix]、iy = 0 が sinφ = -1 側。
+   *
+   * Python の create_occupany_area は符号ごとの場合分けと + divide/2 - 1 の
+   * 補正で添字を作っていて、対称な範囲を前提にしている（シナイだけ別式）。
+   * ここは範囲 [lo, hi] を素直に等分する。境界ちょうどの点の行き先だけが違う。
+   */
+  function histogram(shape, P, pts, divide, upto) {
+    var rg = shape.range(P), lo = rg[0], hi = rg[1];
+    var cells = new Float64Array(divide * divide);
+    var n = Math.min(upto == null ? pts.length : upto, pts.length);
+
+    for (var k = 0; k < n; k++) {
+      var ix = Math.floor((pts[k].s - lo) / (hi - lo) * divide);
+      var iy = Math.floor((pts[k].sin + 1) / 2 * divide);
+      if (ix < 0) ix = 0; else if (ix >= divide) ix = divide - 1;
+      if (iy < 0) iy = 0; else if (iy >= divide) iy = divide - 1;
+      cells[iy * divide + ix] += 1;
+    }
+    return { cells: cells, divide: divide, count: n };
+  }
+
+  /** 集計済みヒストグラムからシャノンエントロピー [bit]。class/*.py の shannon_entropy_value と同じ。 */
+  function entropy(hist) {
+    if (!hist.count) return 0;
+    var s = 0;
+    for (var i = 0; i < hist.cells.length; i++) {
+      var c = hist.cells[i];
+      if (c <= 0) continue;
+      var p = c / hist.count;
+      s -= p * Math.log2(p);
+    }
+    return s;
+  }
+
+  /** 一様分布のときの上限。divide x divide セルなので log2(divide^2)。 */
+  function maxEntropy(divide) { return 2 * Math.log2(divide); }
+
+  /* ================================================================ 幾何の自己検査
+
+     pointFromParam は新規に書いた逆算なので、Python に照合先が無い。
+     代わりに「境界上に乗るか」と「弧長軸なら coord() で元の値に戻るか」を見る。
+     ブラウザでも Node でも走らせられるよう、ここ（DOM 非依存）に置く。 */
+
+  function selfTestGeometry(samples) {
+    var N = samples || 401;
+    var out = [];
+
+    for (var si = 0; si < SHAPE_ORDER.length; si++) {
+      var id = SHAPE_ORDER[si];
+      var shape = SHAPES[id];
+      var P = {};
+      shape.params.forEach(function (spec) { P[spec.key] = spec.def; });
+
+      var rg = shape.paramRange(P);
+      var maxRes = 0, maxRound = 0, outside = 0;
+      var rand = makeRng(12345);
+
+      for (var k = 0; k < N; k++) {
+        // 端ちょうど（角や継ぎ目）は測度ゼロで別枝に落ちるので、内側を刻む
+        var t = rg[0] + (rg[1] - rg[0]) * (k + 0.5) / N;
+        var q = shape.pointFromParam(P, t);
+
+        maxRes = Math.max(maxRes, Math.abs(shape.residual(P, q)));
+
+        if (shape.axis === "arc") {
+          var back = shape.coord(P, q);
+          // 弧長は端で折り返すので、周長ぶんのずれは同一視する
+          var span = rg[1] - rg[0];
+          var d = Math.abs(back - t);
+          maxRound = Math.max(maxRound, Math.min(d, Math.abs(d - span)));
+        }
+
+        // 撃ち出した先が領域の内側を向いているか（内向き法線の確認）
+        var cs = createSetting(shape, P, k, N, rand);
+        var nn = shape.normal(P, cs.p0, cs.v0);
+        var nl = norm2(nn), vl = norm2(cs.v0);
+        if ((nn[0] * cs.v0[0] + nn[1] * cs.v0[1]) / (nl * vl) < -1e-9) outside++;
+      }
+
+      out.push({
+        id: id, label: shape.label,
+        residual: maxRes,
+        roundTrip: shape.axis === "arc" ? maxRound : null,
+        outward: outside,
+        ok: maxRes < 1e-9 && (shape.axis !== "arc" || maxRound < 1e-9) && outside === 0
+      });
+    }
+    return out;
+  }
 
   /* ================================================================ 検算 */
 
@@ -985,7 +1257,13 @@ var Billiard = (function () {
     norm2: norm2,
     simulate: simulate,
     section: section,
-    selfTest: selfTest
+    selfTest: selfTest,
+    makeRng: makeRng,
+    createSetting: createSetting,
+    histogram: histogram,
+    entropy: entropy,
+    maxEntropy: maxEntropy,
+    selfTestGeometry: selfTestGeometry
   };
 })();
 
@@ -1207,6 +1485,20 @@ var REFERENCE = {
     ],
   },
 };
+
+// 重ね描きの色。setting.py: basic_colors がここの正。
+var BASIC_COLORS = [
+  "#FF0000", "#FF1C1C", "#FF3838", "#FF5555", "#FF7171", "#FF8D8D", "#FFAAAA", "#FFC6C6", "#FFE2E2", "#FF007F",
+  "#FF4500", "#FF5714", "#FF6928", "#FF7B3C", "#FF8D50", "#FF9F64", "#FFA500", "#D2691E", "#A0522D", "#8B4513",
+  "#FFD700", "#FFDB19", "#FFDF33", "#FFE34D", "#FFE766", "#FFEB80", "#FFEF99", "#FFF3B2", "#FFF7CC", "#FFFF00",
+  "#ADFF2F", "#A0F02A", "#93E225", "#86D320", "#79C51B", "#6CB616", "#5FA811", "#52990C", "#458B07", "#32CD32",
+  "#00FF00", "#00E600", "#00CC00", "#00B300", "#009900", "#008000", "#006600", "#004D00", "#003300", "#228B22",
+  "#00FA9A", "#00FF7F", "#20B2AA", "#2E8B57", "#3CB371", "#008B8B", "#008080", "#00CED1", "#48D1CC", "#40E0D0",
+  "#00FFFF", "#19FFFF", "#33FFFF", "#4DFFFF", "#66FFFF", "#80FFFF", "#87CEEB", "#87CEFA", "#00BFFF", "#1E90FF",
+  "#0000FF", "#0000E6", "#0000CC", "#0000B3", "#000099", "#000080", "#000066", "#4169E1", "#0000CD", "#00008B",
+  "#8A2BE2", "#9400D3", "#9932CC", "#8B008B", "#800080", "#4B0082", "#483D8B", "#6A5ACD", "#7B68EE", "#9370DB",
+  "#FF00FF", "#EE00EE", "#DD00DD", "#CC00CC", "#BB00BB", "#AA00AA", "#C71585", "#FF1493", "#FF69B4", "#DB7093",
+];
 // === REFERENCE END ===
 if (typeof module !== "undefined" && module.exports) { module.exports = REFERENCE; }
 </script>
@@ -1231,6 +1523,7 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
       orbit: t("--orbit"),
       dash: t("--dash"),
       dot: t("--dot"),
+      heat: t("--heat"),
       tick: t("--ink-3"),
       rule: t("--rule"),
       mono: t("--mono")
@@ -1364,6 +1657,7 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
       ctx.arc(b[0], b[1], 5, 0, 2 * Math.PI);
       ctx.stroke();
     }
+
   }
 
   /* ------------------------------------------------------------ 断面 */
@@ -1400,7 +1694,148 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     var pr = sectionProjector(shape, P, g.w, g.h);
     if (!pr) return;
 
-    // sinφ = 0 の水平線
+    drawSectionFrame(ctx, shape, P, pr, T);
+
+    // 点
+    var n = Math.min(upto, pts.length);
+    ctx.fillStyle = T.dot;
+    for (var k = 0; k < n; k++) {
+      ctx.fillRect(pr.X(pts[k].s) - 0.6, pr.Y(pts[k].sin) - 0.6, 1.2, 1.2);
+    }
+
+    // 枠と目盛は点の後に描いて、はみ出しを隠す
+    drawSectionAxes(ctx, pr, T);
+
+    // 相互ハイライト
+    if (hi != null && hi >= 1 && hi <= n) {
+      var p = pts[hi - 1];
+      ctx.strokeStyle = T.dash;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(pr.X(p.s), pr.Y(p.sin), 5, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }
+
+  /* ============================================================ 追加の描画
+
+     単一軌道以外の3つの表示。断面の写像（sectionProjector）は使い回す。 */
+
+  /** 重ね描き（S1）。初期値ごとに色を変えて断面へ重ねる。 */
+  function drawSectionMix(cv, shape, P, runs, T) {
+    var g = fitCanvas(cv), ctx = g.ctx;
+    var pr = sectionProjector(shape, P, g.w, g.h);
+    if (!pr) return;
+
+    drawSectionFrame(ctx, shape, P, pr, T);
+
+    for (var r = 0; r < runs.length; r++) {
+      var pts = runs[r].pts;
+      ctx.fillStyle = runs[r].color;
+      for (var k = 0; k < pts.length; k++) {
+        ctx.fillRect(pr.X(pts[k].s) - 0.6, pr.Y(pts[k].sin) - 0.6, 1.2, 1.2);
+      }
+    }
+    drawSectionAxes(ctx, pr, T);
+  }
+
+  /** 占有領域（S2）。セルの通過回数を濃淡で塗る。 */
+  function drawHeat(cv, shape, P, hist, T) {
+    var g = fitCanvas(cv), ctx = g.ctx;
+    var pr = sectionProjector(shape, P, g.w, g.h);
+    if (!pr || !hist) return;
+
+    var d = hist.divide;
+    var max = 0;
+    for (var i = 0; i < hist.cells.length; i++) {
+      if (hist.cells[i] > max) max = hist.cells[i];
+    }
+
+    if (max > 0) {
+      var cw = pr.iw / d, ch = pr.ih / d;
+      for (var iy = 0; iy < d; iy++) {
+        for (var ix = 0; ix < d; ix++) {
+          var c = hist.cells[iy * d + ix];
+          if (c <= 0) continue;
+          ctx.globalAlpha = c / max;
+          ctx.fillStyle = T.heat;
+          // iy = 0 が sinφ = -1 側なので、画面では下から積む
+          ctx.fillRect(SEC_PAD.l + ix * cw,
+            SEC_PAD.t + pr.ih - (iy + 1) * ch,
+            Math.ceil(cw) + 0.5, Math.ceil(ch) + 0.5);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    drawSectionFrame(ctx, shape, P, pr, T);
+    drawSectionAxes(ctx, pr, T);
+  }
+
+  /** エントロピー（S3）。横軸 log2(N)、縦軸 S[bit]。理論上限を赤い水平線で示す。 */
+  function drawEntropy(cv, series, divide, T) {
+    var g = fitCanvas(cv), ctx = g.ctx;
+    var w = g.w, h = g.h;
+    var pad = { l: 44, r: 14, t: 14, b: 30 };
+    var iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+    if (!(iw > 0) || !(ih > 0) || !series || series.length === 0) return;
+
+    var top = Billiard.maxEntropy(divide);
+    var xlo = series[0].x, xhi = series[series.length - 1].x;
+    if (!(xhi > xlo)) { xhi = xlo + 1; }
+    var ymax = top * 1.08;
+
+    function X(v) { return pad.l + (v - xlo) / (xhi - xlo) * iw; }
+    function Y(v) { return pad.t + (1 - v / ymax) * ih; }
+
+    // 理論上限 log2(divide^2)
+    ctx.save();
+    ctx.strokeStyle = T.dash;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(pad.l, Y(top));
+    ctx.lineTo(pad.l + iw, Y(top));
+    ctx.stroke();
+    ctx.restore();
+
+    // 曲線
+    ctx.strokeStyle = T.orbit;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (var k = 0; k < series.length; k++) {
+      var px = X(series[k].x), py = Y(series[k].s);
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = T.dot;
+    for (var m = 0; m < series.length; m++) {
+      ctx.fillRect(X(series[m].x) - 1.5, Y(series[m].s) - 1.5, 3, 3);
+    }
+
+    ctx.strokeStyle = T.boundary;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pad.l, pad.t, iw, ih);
+
+    ctx.fillStyle = T.tick;
+    ctx.font = "10px " + T.mono;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(top.toFixed(2), pad.l - 5, Y(top));
+    ctx.fillText("0", pad.l - 5, Y(0));
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.fillText("log2(N)=" + xlo.toFixed(1), pad.l, pad.t + ih + 5);
+    ctx.textAlign = "right";
+    ctx.fillText(xhi.toFixed(1), pad.l + iw, pad.t + ih + 5);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("S [bit]  上限 log2(divide^2) = " + top.toFixed(3),
+      pad.l + 4, Y(top) - 4);
+  }
+
+  /* drawSection から枠・破線・目盛を切り出して、3つの表示で使い回す */
+  function drawSectionFrame(ctx, shape, P, pr, T) {
     ctx.strokeStyle = T.rule;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1408,7 +1843,6 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     ctx.lineTo(SEC_PAD.l + pr.iw, pr.Y(0));
     ctx.stroke();
 
-    // 直線部と曲線部の境界（setting.py の赤い破線と同じ位置）
     ctx.save();
     ctx.strokeStyle = T.dash;
     ctx.setLineDash([4, 3]);
@@ -1421,20 +1855,13 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
       ctx.stroke();
     });
     ctx.restore();
+  }
 
-    // 点
-    var n = Math.min(upto, pts.length);
-    ctx.fillStyle = T.dot;
-    for (var k = 0; k < n; k++) {
-      ctx.fillRect(pr.X(pts[k].s) - 0.6, pr.Y(pts[k].sin) - 0.6, 1.2, 1.2);
-    }
-
-    // 枠は点の後に描いて、はみ出しを隠す
+  function drawSectionAxes(ctx, pr, T) {
     ctx.strokeStyle = T.boundary;
     ctx.lineWidth = 1;
     ctx.strokeRect(SEC_PAD.l, SEC_PAD.t, pr.iw, pr.ih);
 
-    // 目盛
     ctx.fillStyle = T.tick;
     ctx.font = "10px " + T.mono;
     ctx.textAlign = "right";
@@ -1452,16 +1879,107 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
       ctx.textAlign = "center";
       ctx.fillText("0", pr.X(0), SEC_PAD.t + pr.ih + 5);
     }
+  }
 
-    // 相互ハイライト
-    if (hi != null && hi >= 1 && hi <= n) {
-      var p = pts[hi - 1];
-      ctx.strokeStyle = T.dash;
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.arc(pr.X(p.s), pr.Y(p.sin), 5, 0, 2 * Math.PI);
-      ctx.stroke();
+  /* ============================================================ 表示の切り替え */
+
+  var VIEWS = {
+    single: "初期条件を1つ与えて軌道と断面を見ます。断面の点にカーソルを合わせると、軌道図の対応する衝突が強調されます。",
+    mix: "境界を等分した位置に初期条件を撒き、色分けして断面に重ねます（main/(形状)/poincare_mix.py 相当）。積分可能系では曲線群に、エルゴード系では一様に散らばります。",
+    occupancy: "断面を divide x divide の格子に分け、通過回数を濃淡で塗ります（paint_occupany_area 相当）。エントロピーの計算元です。",
+    entropy: "衝突回数を増やしながらシャノンエントロピーを計算します（shannon_entropy_mix 相当）。赤い破線は一様分布のときの上限 log2(divide^2)。"
+  };
+
+  var mixState = { epoch: 100, mixN: 1000, seed: 1, runs: null, ms: 0 };
+  var gridState = { divide: 50, step: 100 };
+
+  function applyView() {
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
+      b.setAttribute("aria-selected", b.dataset.view === state.view ? "true" : "false");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-group]"), function (el) {
+      var list = el.getAttribute("data-group").split(/\s+/);
+      el.hidden = list.indexOf(state.view) < 0;
+    });
+
+    var hint = document.getElementById("view-hint");
+    if (hint) hint.textContent = VIEWS[state.view] || "";
+
+    // 重ね描きは軌道図を出さない（100本重なると読めないため。差し戻し R4）
+    var panels = document.querySelector(".panels");
+    if (panels) panels.classList.toggle("one",
+      state.view === "mix" || state.view === "entropy");
+
+    var capA = document.getElementById("cap-a");
+    var capB = document.getElementById("cap-b");
+    if (capA && capB) {
+      if (state.view === "entropy") {
+        capB.textContent = "シャノンエントロピー";
+      } else if (state.view === "occupancy") {
+        capA.textContent = "軌道図"; capB.textContent = "占有領域";
+      } else {
+        capA.textContent = "軌道図"; capB.textContent = "ポアンカレ断面";
+      }
     }
+
+    if (state.view === "mix" && !mixState.runs) computeMix();
+    update({});
+  }
+
+  function computeMix() {
+    var sh = shape();
+    var rand = Billiard.makeRng(mixState.seed);
+    var t0 = performance.now();
+    var runs = [];
+    var stopped = 0;
+
+    for (var i = 0; i < mixState.epoch; i++) {
+      var cs = Billiard.createSetting(sh, state.params, i, mixState.epoch, rand);
+      var run = Billiard.simulate(sh, state.params, cs.p0, cs.v0, mixState.mixN);
+      if (run.stop) stopped++;
+      runs.push({
+        pts: Billiard.section(sh, state.params, run.collisions),
+        color: BASIC_COLORS[i % BASIC_COLORS.length]
+      });
+    }
+    mixState.runs = runs;
+    mixState.ms = performance.now() - t0;
+    mixState.stopped = stopped;
+
+    var msg = document.getElementById("msg-mix");
+    if (msg) {
+      msg.textContent = stopped
+        ? stopped + " 本が途中で止まりました（交点が見つからない初期条件）"
+        : "";
+      msg.className = stopped ? "msg error" : "msg";
+    }
+  }
+
+  /** エントロピーの系列。刻みごとにヒストグラムを差分で積む（Python 側と同じ考え方）。 */
+  function entropySeries() {
+    var sh = shape();
+    var d = gridState.divide;
+    var step = Math.max(1, gridState.step);
+    var total = state.pts.length;
+    if (total === 0) return [];
+
+    var rg = sh.range(state.params), lo = rg[0], hi = rg[1];
+    var cells = new Float64Array(d * d);
+    var series = [];
+    var counted = 0;
+
+    for (var n = step; n <= total; n += step) {
+      for (var k = counted; k < n; k++) {
+        var ix = Math.floor((state.pts[k].s - lo) / (hi - lo) * d);
+        var iy = Math.floor((state.pts[k].sin + 1) / 2 * d);
+        if (ix < 0) ix = 0; else if (ix >= d) ix = d - 1;
+        if (iy < 0) iy = 0; else if (iy >= d) iy = d - 1;
+        cells[iy * d + ix] += 1;
+      }
+      counted = n;
+      series.push({ x: Math.log2(n), n: n, s: Billiard.entropy({ cells: cells, count: n }) });
+    }
+    return series;
   }
 
   /* ------------------------------------------------------------ 状態 */
@@ -1487,7 +2005,8 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     dirty: false,     // 衝突回数を変えたが未計算
     invalid: false,   // 初期条件が不正
     mode: "all",      // "all" = 一括表示 / "anim" = アニメーション
-    speed: 4          // アニメーション1コマあたりに進める衝突数
+    speed: 4,         // アニメーション1コマあたりに進める衝突数
+    view: "single"    // single / mix / occupancy / entropy
   };
 
   function shape() { return Billiard.SHAPES[state.shapeId]; }
@@ -1561,6 +2080,21 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     var sh = shape();
     var T = readTokens();
 
+    if (state.view === "mix") {
+      drawSectionMix(sectionCv, sh, state.params, mixState.runs || [], T);
+      return;
+    }
+    if (state.view === "occupancy") {
+      drawOrbit(orbitCv, sh, state.params, state.p0,
+        state.collisions, state.collisions.length, null, T);
+      drawHeat(sectionCv, sh, state.params,
+        Billiard.histogram(sh, state.params, state.pts, gridState.divide), T);
+      return;
+    }
+    if (state.view === "entropy") {
+      drawEntropy(sectionCv, entropySeries(), gridState.divide, T);
+      return;
+    }
     drawOrbit(orbitCv, sh, state.params, state.p0,
       state.collisions, state.frame, state.hi, T);
     drawSection(sectionCv, sh, state.params,
@@ -1575,9 +2109,34 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     }).join("  ");
 
     var tail;
-    if (state.invalid) tail = "計算していません";
-    else if (state.dirty) tail = "未計算（衝突回数 " + state.pendingN + " で「計算」を押してください）";
-    else tail = "衝突 " + state.collisions.length + " 回   計算 " + state.ms.toFixed(1) + " ms";
+    if (state.invalid) {
+      tail = "計算していません";
+    } else if (state.view === "mix") {
+      tail = mixState.runs
+        ? "初期値 " + mixState.epoch + " 本 x 衝突 " + mixState.mixN + " = " +
+          (mixState.epoch * mixState.mixN) + " 衝突   計算 " + mixState.ms.toFixed(0) + " ms"
+        : "未計算";
+    } else if (state.dirty) {
+      tail = "未計算（衝突回数 " + state.pendingN + " で「計算」を押してください）";
+    } else if (state.view === "occupancy") {
+      var hist = Billiard.histogram(sh, state.params, state.pts, gridState.divide);
+      var used = 0, mx = 0;
+      for (var i = 0; i < hist.cells.length; i++) {
+        if (hist.cells[i] > 0) { used++; if (hist.cells[i] > mx) mx = hist.cells[i]; }
+      }
+      tail = "divide=" + gridState.divide + "   衝突 " + hist.count +
+        "   使われたセル " + used + " / " + (gridState.divide * gridState.divide) +
+        "   最大 " + mx;
+    } else if (state.view === "entropy") {
+      var se = entropySeries();
+      var last = se.length ? se[se.length - 1] : null;
+      tail = "divide=" + gridState.divide + "   刻み " + gridState.step +
+        "   点数 " + se.length +
+        (last ? "   S(" + last.n + ") = " + last.s.toFixed(4) +
+          " / 上限 " + Billiard.maxEntropy(gridState.divide).toFixed(4) : "");
+    } else {
+      tail = "衝突 " + state.collisions.length + " 回   計算 " + state.ms.toFixed(1) + " ms";
+    }
 
     statusEl.textContent = sh.label + "   " + ps + "   " + tail;
 
@@ -1633,10 +2192,11 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
 
     if (state.invalid) {
       drawEmpty("初期条件を直してください");
-    } else if (state.dirty) {
+    } else if (state.dirty && state.view !== "mix") {
       drawEmpty("「計算」を押すと表示されます");
     } else {
       if (opts && opts.recompute) recompute();
+      if (state.view === "mix" && !mixState.runs) computeMix();
       draw();
     }
     syncFrameUI();
@@ -1740,6 +2300,7 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     } else {
       notice("");
     }
+    mixState.runs = null;      // 形状が変わったら初期値も撒き直す
     syncInputs();
     update({ recompute: true });
   }
@@ -1837,6 +2398,67 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     state: state, update: update, draw: draw, recompute: recompute,
     el: el, MAX_N: MAX_N, syncInputs: syncInputs
   };
+
+  /* -------------------------------------------------- タブと解析まわりの配線 */
+
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
+    b.addEventListener("click", function () {
+      if (state.view === b.dataset.view) return;
+      state.view = b.dataset.view;
+      applyView();
+    });
+  });
+
+  /* スライダーと数値欄の2つ組を1つの値に束ねる。
+     liveRange = false のときはドラッグ中に発火しない。重ね描きは
+     本数 x 衝突回数ぶんの計算が走るので、離した時点(change)で初めて計算する。 */
+  function bindPair(rangeId, numId, get, set, onChange, liveRange) {
+    var rng = document.getElementById(rangeId);
+    var num = document.getElementById(numId);
+    if (!rng || !num) return;
+
+    rng.value = get();
+    num.value = get();
+
+    rng.addEventListener(liveRange === false ? "change" : "input", function () {
+      set(Number(rng.value));
+      num.value = rng.value;
+      onChange();
+    });
+    rng.addEventListener("input", function () { num.value = rng.value; });
+
+    num.addEventListener("change", function () {
+      var v = Number(num.value);
+      if (!isFinite(v)) { num.value = get(); return; }
+      v = Math.max(Number(num.min) || 1, Math.floor(v));
+      num.value = v;
+      set(v);
+      rng.value = Math.min(Number(rng.max), Math.max(Number(rng.min), v));
+      onChange();
+    });
+  }
+
+  function remix() { mixState.runs = null; update({}); }
+
+  bindPair("in-epoch", "in-epoch-n",
+    function () { return mixState.epoch; },
+    function (v) { mixState.epoch = v; }, remix, false);
+  bindPair("in-mixn", "in-mixn-n",
+    function () { return mixState.mixN; },
+    function (v) { mixState.mixN = v; }, remix, false);
+  bindPair("in-seed", "in-seed-n",
+    function () { return mixState.seed; },
+    function (v) { mixState.seed = v; }, remix, false);
+
+  // 分割数と刻みは再計算が要らない（集計し直すだけ）ので、ドラッグ中も追随させる
+  bindPair("in-divide", "in-divide-n",
+    function () { return gridState.divide; },
+    function (v) { gridState.divide = v; }, function () { update({}); }, true);
+  bindPair("in-step", "in-step-n",
+    function () { return gridState.step; },
+    function (v) { gridState.step = v; }, function () { update({}); }, true);
+
+  applyView();
 
   /* ------------------------------------------------------------ 再生 */
 
