@@ -106,13 +106,36 @@ function main() {
       fmt(r.dSin));
   }
 
+  // --- 幾何の自己検査 -------------------------------------------------
+  // pointFromParam(境界パラメータ -> 境界上の点) は JS 側で新規に書いたので
+  // Python に照合先が無い。代わりに次を確かめる。
+  //   residual   : 生成した点が本当に境界の方程式を満たすか
+  //   roundTrip  : 弧長軸の形状なら coord() で元のパラメータに戻るか
+  //   outward    : 撒いた初期条件が領域の内側を向いているか（内向き法線の確認）
+  if (typeof Billiard.selfTestGeometry === "function") {
+    console.log("");
+    console.log("=".repeat(72));
+    console.log("boundary parametrisation (js only -- no python counterpart)");
+    console.log("=".repeat(72));
+    console.log("         " + "shape".padEnd(9) +
+      "residual  round_trip  outward");
+
+    for (const g of Billiard.selfTestGeometry()) {
+      if (!g.ok) failures++;
+      console.log("  " + (g.ok ? "[PASS] " : "[FAIL] ") + g.id.padEnd(9) +
+        fmt(g.residual).padEnd(10) +
+        (g.roundTrip == null ? "-".padEnd(12) : fmt(g.roundTrip).padEnd(12)) +
+        String(g.outward));
+    }
+  }
+
   console.log("=".repeat(72));
   if (failures) {
     console.log("FAILED for " + failures + " shape(s)  (tolerance " +
       Billiard.TOLERANCE + ")");
     return 1;
   }
-  console.log("all shapes match python within " + Billiard.TOLERANCE);
+  console.log("all checks passed");
   return 0;
 }
 

@@ -32,6 +32,9 @@ simulation.html（JavaScript 版）が既存 Python と同じ数値を出して�
 import os
 import sys
 
+# setting.py が matplotlib を import するので、画面を開かないバックエンドにしておく。
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -40,6 +43,9 @@ OUT_DIR = os.path.join(ROOT, "tools")
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "class"))
 sys.path.insert(0, os.path.join(ROOT, "func", "squre"))
+
+# 重ね描きの色。setting.py が正で、ここは写しではなく import している。
+from setting import basic_colors
 
 # class/ 側（現行実装）。matplotlib を引き込まないよう *_func だけを import する。
 import stadium_func as SF
@@ -257,6 +263,13 @@ def build_js(all_rows):
         out.append('    ],')
         out.append('  },')
     out.append("};")
+    out.append("")
+    out.append("// 重ね描きの色。setting.py: basic_colors がここの正。")
+    out.append("var BASIC_COLORS = [")
+    for k in range(0, len(basic_colors), 10):
+        row = basic_colors[k:k + 10]
+        out.append("  " + ", ".join('"%s"' % c for c in row) + ",")
+    out.append("];")
     return "\n".join(out) + "\n"
 
 
