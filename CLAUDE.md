@@ -12,7 +12,7 @@
   - `main/create_setting.py` — 多初期値の重ね描き用に、境界上の初期条件を生成する
   - `setting.py` — 全形状の matplotlib 描画設定（`*_set` が軌道図、`*_poincare_map*` が断面）と `basic_colors`（100色）
   - `func/<形状>/` — **クラス化前の旧実装**。`squre`（矩形）と `ellipse` はまだクラス化されておらず、ここにしか無い。`stadium` / `sinai` / `egg` は `class/*_func.py` と重複しているので、**編集するなら `class/` 側**
-  - `simulation.html` — パラメータ探索用の HTML。`billiard-core`（数値核・DOM 非依存）/ `billiard-ref`（自動生成される参照値）/ `billiard-ui`（画面）の3つの script に分かれている
+  - `simulation.html` — パラメータ探索用の HTML。`billiard-core`（数値核・DOM 非依存）/ `billiard-ref`（自動生成される参照値と色）/ `billiard-ui`（画面）の3つの script に分かれている。画面は4タブ（単一軌道 / 重ね描き / 占有領域 / エントロピー）
   - `tools/` — `dump_section.py`（参照値を作って HTML へ差し込む）と `check_html.js`（Node で数値照合）
   - `tests/test_invariants.py` — 物理不変量テスト
   - `stadium/graph_data/` — 生成済みの PNG。コードではない
@@ -75,6 +75,9 @@
 - **`create_occupany_area()` には off-by-one が残っている**（初期位置を1個数えて N 回目を捨てる）。`poincare()` 側だけ直してあり、意図的に手を付けていない。S2・S3（占有領域・エントロピー）に着手するときにまとめて直す
 - **canvas の寸法は `clientWidth` / `clientHeight` を使う。** `getBoundingClientRect()` は `box-sizing:border-box` の 1px ボーダーを含むので、それを `canvas.width` にすると描画面が縮小表示され、マウス座標と数 px ずれる（断面のホバーが隣の点を拾う形で出た）
 - **`billiard-ui` は1つの IIFE で、後半のブロックほど後に初期化される。** `var` は巻き上げられるので、前半の関数から後半で定義した定数を参照すると `undefined` になる（`new Array(NaN)` で `RangeError` を出して UI 全体が起動しなくなった）。索引などは遅延生成にする
+- **長い軌道で JS と Python の数値一致を期待しない。** カオス系なので数百衝突で 1 ULP から指数的に開く（スタジアムで実測 420 衝突目）。移植の正しさは 35 衝突の参照照合が担保する。エントロピーのような統計量は 1% 程度の差が出て当たり前
+- **`billiard-ui` から核の内部関数は見えない。** `norm2` などは `billiard-core` の IIFE に閉じているので、UI 側では `Billiard.norm2` と書く。裸で呼ぶと `ReferenceError` で UI 全体が起動しなくなる
+- **ブロックコメントの中にパスを書くときは `*` と `/` を並べない。** `main/*/foo.py` と書くとそこでコメントが閉じ、以降がコードとして解釈されて UI 全体が落ちる
 - **`plt.show()` を含むスクリプトはヘッドレスで完走しない**。バックグラウンド実行して「終わった」と判断しないこと
 - **コンソールは cp932**。Python から非ASCII文字（上付き文字・φ・✓・絵文字）を print しない。既存コードは `print(f"...sinφ:...")` を含んでおり、環境によっては落ちる。新しく print を足すときは ASCII に留めるか、ファイルへ書き出す
 - **新規ファイルは UTF-8（BOMなし）**。ソースファイルに PowerShell の一括正規表現置換をかけない（UTF-8 が壊れる）
