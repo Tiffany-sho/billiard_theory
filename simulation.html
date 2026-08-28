@@ -36,6 +36,7 @@
   --dash:#d32f2f;       /* 断面の境界分離線 */
   --dot:#000000;        /* 断面の点 */
   --heat:#1b7f4b;       /* 占有領域の塗り（matplotlib 版の green に相当） */
+  --handle:#1d6fd0;     /* ドラッグできる初期条件のハンドル */
   --ok:#1b7f4b;
   --ng:#b3261e;
   --mono:"Consolas","SF Mono",ui-monospace,monospace;
@@ -156,6 +157,7 @@ button[disabled]{opacity:.4; cursor:not-allowed}
   color:var(--ink); min-height:1.7em;
 }
 #section-canvas{cursor:crosshair}
+#orbit-canvas{cursor:crosshair; touch-action:none}
 </style>
 
 <div class="wrap">
@@ -1524,6 +1526,8 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
       dash: t("--dash"),
       dot: t("--dot"),
       heat: t("--heat"),
+      handle: t("--handle"),
+      paper: t("--paper"),
       tick: t("--ink-3"),
       rule: t("--rule"),
       mono: t("--mono")
@@ -1577,16 +1581,39 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     var scale = Math.min((w - 2 * ORBIT_MARGIN) / bw, (h - 2 * ORBIT_MARGIN) / bh);
     var cx = (bb[0] + bb[2]) / 2, cy = (bb[1] + bb[3]) / 2;
 
-    return function (x, y) {
-      // y は画面が下向き正なので反転する
-      return [w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale];
+    // ドラッグで画面座標から世界座標へ戻す必要があるので、逆変換も返す。
+    // y は画面が下向き正なので、どちらの向きでも反転させる。
+    return {
+      scale: scale,
+      toScreen: function (x, y) {
+        return [w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale];
+      },
+      toWorld: function (px, py) {
+        return [cx + (px - w / 2) / scale, cy - (py - h / 2) / scale];
+      }
     };
   }
 
-  function drawOrbit(cv, shape, P, p0, collisions, upto, hi, T) {
+  /* 初速度の矢印の先端（画面座標）。掴みやすさを保つため長さは画面上で一定にする。
+     速さ |v| は軌道に影響しない（衝突列は向きだけで決まる）ので長さには反映しない。 */
+  var ARROW_PX = 46, GRAB_PX = 11;
+
+  function velocityHandle(pr, p0, v0) {
+    var sp = pr.toScreen(p0[0], p0[1]);
+    var L = Billiard.norm2(v0) || 1;
+    return [sp[0] + v0[0] / L * ARROW_PX, sp[1] - v0[1] / L * ARROW_PX];
+  }
+
+  function dist2(a, b) {
+    var dx = a[0] - b[0], dy = a[1] - b[1];
+    return dx * dx + dy * dy;
+  }
+
+  function drawOrbit(cv, shape, P, p0, collisions, upto, hi, T, v0) {
     var g = fitCanvas(cv), ctx = g.ctx;
-    var S = orbitProjector(shape, P, g.w, g.h);
-    if (!S) return;
+    var pr = orbitProjector(shape, P, g.w, g.h);
+    if (!pr) return;
+    var S = pr.toScreen;
 
     ctx.strokeStyle = T.boundary;
     ctx.lineWidth = 1;
@@ -1658,6 +1685,41 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
       ctx.stroke();
     }
 
+    // ドラッグできる初期条件のハンドル（初期位置と初速度の向き）
+    if (v0) drawStartHandles(ctx, pr, p0, v0, T);
+  }
+
+  function drawStartHandles(ctx, pr, p0, v0, T) {
+    var sp = pr.toScreen(p0[0], p0[1]);
+    var tip = velocityHandle(pr, p0, v0);
+
+    ctx.strokeStyle = T.handle;
+    ctx.fillStyle = T.handle;
+    ctx.lineWidth = 1.8;
+
+    // 軸
+    ctx.beginPath();
+    ctx.moveTo(sp[0], sp[1]);
+    ctx.lineTo(tip[0], tip[1]);
+    ctx.stroke();
+
+    // 矢じり
+    var ang = Math.atan2(tip[1] - sp[1], tip[0] - sp[0]);
+    ctx.beginPath();
+    ctx.moveTo(tip[0], tip[1]);
+    ctx.lineTo(tip[0] - 9 * Math.cos(ang - 0.4), tip[1] - 9 * Math.sin(ang - 0.4));
+    ctx.lineTo(tip[0] - 9 * Math.cos(ang + 0.4), tip[1] - 9 * Math.sin(ang + 0.4));
+    ctx.closePath();
+    ctx.fill();
+
+    // 初期位置。白で塗ってから縁取ると、黒い軌道の上でも見える
+    ctx.beginPath();
+    ctx.arc(sp[0], sp[1], 5, 0, 2 * Math.PI);
+    ctx.fillStyle = T.paper;
+    ctx.fill();
+    ctx.strokeStyle = T.handle;
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 
   /* ------------------------------------------------------------ 断面 */
@@ -1884,9 +1946,9 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
   /* ============================================================ 表示の切り替え */
 
   var VIEWS = {
-    single: "初期条件を1つ与えて軌道と断面を見ます。断面の点にカーソルを合わせると、軌道図の対応する衝突が強調されます。",
+    single: "初期条件を1つ与えて軌道と断面を見ます。軌道図の青い丸をドラッグすると初期位置、矢印の先をドラッグすると初速度の向きが変わります（速さは軌道に影響しないので変えません）。断面の点にカーソルを合わせると、軌道図の対応する衝突が強調されます。",
     mix: "境界を等分した位置に初期条件を撒き、色分けして断面に重ねます（main/(形状)/poincare_mix.py 相当）。積分可能系では曲線群に、エルゴード系では一様に散らばります。",
-    occupancy: "断面を divide x divide の格子に分け、通過回数を濃淡で塗ります（paint_occupany_area 相当）。エントロピーの計算元です。",
+    occupancy: "断面を divide x divide の格子に分け、通過回数を濃淡で塗ります（paint_occupany_area 相当）。エントロピーの計算元です。軌道図のハンドルをドラッグして初期条件を動かせます。",
     entropy: "衝突回数を増やしながらシャノンエントロピーを計算します（shannon_entropy_mix 相当）。赤い破線は一様分布のときの上限 log2(divide^2)。"
   };
 
@@ -2086,7 +2148,7 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     }
     if (state.view === "occupancy") {
       drawOrbit(orbitCv, sh, state.params, state.p0,
-        state.collisions, state.collisions.length, null, T);
+        state.collisions, state.collisions.length, null, T, state.v0);
       drawHeat(sectionCv, sh, state.params,
         Billiard.histogram(sh, state.params, state.pts, gridState.divide), T);
       return;
@@ -2096,7 +2158,7 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
       return;
     }
     drawOrbit(orbitCv, sh, state.params, state.p0,
-      state.collisions, state.frame, state.hi, T);
+      state.collisions, state.frame, state.hi, T, state.v0);
     drawSection(sectionCv, sh, state.params,
       state.pts, state.frame, state.hi, T);
   }
@@ -2398,6 +2460,110 @@ if (typeof module !== "undefined" && module.exports) { module.exports = REFERENC
     state: state, update: update, draw: draw, recompute: recompute,
     el: el, MAX_N: MAX_N, syncInputs: syncInputs
   };
+
+  /* ------------------------------------------------- 初期条件のドラッグ
+
+     軌道図の上で初期位置と初速度の向きを直接いじれるようにする。
+     数値欄で (x, y, vx, vy) を打つより、境界のどこから撃つとどう変わるかを
+     探すのがずっと速い。
+
+     pointer 系のイベントを使うのはマウスとタッチを1本で扱うため。
+     setPointerCapture しておくと、canvas の外へドラッグしても追随する。 */
+
+  var dragMode = null;    // null / "pos"（初期位置） / "vel"（初速度の向き）
+
+  // 重ね描きは初期条件を自動で撒くので触らせない。
+  // エントロピーは軌道図を出していないので対象外。
+  function canDrag() {
+    return state.view === "single" || state.view === "occupancy";
+  }
+
+  function orbitPr() {
+    if (!orbitCv || !orbitCv.clientWidth) return null;
+    return orbitProjector(shape(), state.params,
+      orbitCv.clientWidth, orbitCv.clientHeight);
+  }
+
+  // 内容ボックス基準の座標にそろえる（断面のホバーと同じ理由。ボーダーぶんを引く）
+  function canvasPoint(cv, ev) {
+    var r = cv.getBoundingClientRect();
+    return [ev.clientX - r.left - cv.clientLeft,
+            ev.clientY - r.top - cv.clientTop];
+  }
+
+  function hitTarget(pr, m) {
+    var tip = velocityHandle(pr, state.p0, state.v0);
+    if (dist2(m, tip) <= GRAB_PX * GRAB_PX) return "vel";
+    var sp = pr.toScreen(state.p0[0], state.p0[1]);
+    if (dist2(m, sp) <= GRAB_PX * GRAB_PX) return "pos";
+    return null;
+  }
+
+  function applyDrag(m, pr) {
+    if (dragMode === "vel") {
+      var sp = pr.toScreen(state.p0[0], state.p0[1]);
+      var dx = m[0] - sp[0];
+      var dy = sp[1] - m[1];              // 画面の y は下向き正なので反転
+      var L = Math.hypot(dx, dy);
+      if (L < 1e-9) return;               // 始点と重なったら向きが決まらない
+      // 速さは変えない。衝突列は向きだけで決まるので、矢印の長さに意味を持たせない。
+      var speed = Billiard.norm2(state.v0) || 0.01;
+      state.v0 = [dx / L * speed, dy / L * speed];
+    } else {
+      var w = pr.toWorld(m[0], m[1]);
+      // 領域の外へは出さない。掴んだまま外へ振っても、最後に有効だった位置が残る。
+      if (!shape().contains(state.params, w)) return;
+      state.p0 = w;
+    }
+    notice("");
+    syncInputs();
+    update({ recompute: true });
+  }
+
+  if (orbitCv) {
+    orbitCv.addEventListener("pointerdown", function (ev) {
+      if (!canDrag()) return;
+      var pr = orbitPr();
+      if (!pr) return;
+
+      var m = canvasPoint(orbitCv, ev);
+      var hit = hitTarget(pr, m);
+      // ハンドルから離れた場所を押したときは、そこが領域内なら初期位置を移す。
+      // 「掴んでから動かす」を強制すると、遠くへ飛ばすのに何度もドラッグが要る。
+      if (!hit) {
+        if (!shape().contains(state.params, pr.toWorld(m[0], m[1]))) return;
+        hit = "pos";
+      }
+      dragMode = hit;
+      orbitCv.setPointerCapture(ev.pointerId);
+      applyDrag(m, pr);
+      ev.preventDefault();
+    });
+
+    orbitCv.addEventListener("pointermove", function (ev) {
+      var pr = orbitPr();
+      if (!pr) return;
+      var m = canvasPoint(orbitCv, ev);
+
+      if (dragMode) { applyDrag(m, pr); return; }
+
+      // 掴めるところではカーソルを変える
+      if (!canDrag()) { orbitCv.style.cursor = "default"; return; }
+      orbitCv.style.cursor = hitTarget(pr, m) ? "grab"
+        : (shape().contains(state.params, pr.toWorld(m[0], m[1])) ? "crosshair" : "default");
+    });
+
+    function endDrag(ev) {
+      if (!dragMode) return;
+      dragMode = null;
+      if (ev && ev.pointerId != null && orbitCv.hasPointerCapture(ev.pointerId)) {
+        orbitCv.releasePointerCapture(ev.pointerId);
+      }
+    }
+    orbitCv.addEventListener("pointerup", endDrag);
+    orbitCv.addEventListener("pointercancel", endDrag);
+    orbitCv.addEventListener("lostpointercapture", endDrag);
+  }
 
   /* -------------------------------------------------- タブと解析まわりの配線 */
 
