@@ -32,14 +32,16 @@ class Egg:
             self.positions.append(p.copy())
             self.velocities.append(v.copy())
 
+        # 横軸は弧長ではなく角度 theta = atan2(y, x) ∈ (-π, π]（docs/contracts.md §2-5）
+        self.range_sin = 2.0
+        self.range_arc = 2 * np.pi
+
 
     def liner(self):
 
         fig ,ax = plt.subplots()
         egg_set(ax ,self.width_right ,self.width_left ,self.height )
 
-        # 高速化(2026-08-25): 以前は for ループで1点ずつ append していた。
-        #   positions は (bound_num + 1, 2) の配列そのものなので、まとめて取り出す。
         p = np.asarray(self.positions)
         p_x = p[:, 0]
         p_y = p[:, 1]
@@ -47,10 +49,6 @@ class Egg:
         def update(frame):
             plt.plot([p_x[frame]],[p_y[frame]] , "o",color = "black" ,ms = 3)
 
-            # 高速化(2026-08-25): 衝突と衝突の間は直線なので、端点2つで同じ図になる。
-            #   以前は linspace で 100 点に分割して描いていた（点数が50倍）。
-            #   さらに「x が変化しないなら同じ値を100個並べる」という分岐もあったが、
-            #   np.linspace(a, a, 100) は普通に動くので、もともと不要な分岐だった。
             plt.plot([p_x[frame], p_x[frame + 1]], [p_y[frame], p_y[frame + 1]],
                      color = "black" ,linewidth = 1 ,alpha=0.1)
 
@@ -62,23 +60,14 @@ class Egg:
         plt.show()
 
     def poincare(self,color):
-
-        fig ,ax = plt.subplots()
-        egg_poincare_map(ax,self.width_right ,self.width_left ,self.height)
+        # 変更(2026-09-30): 以前はここで figure を作って plt.show() していた。
+        #   それだと重ね描き(main/egg/poincare_mix.py)で1本ごとに別ウィンドウになるので、
+        #   Sinai / Stadium と同じく「今の ax に点を足すだけ」にした。
+        #   軸の設定(egg_poincare_map)と plt.show() は呼び出し側で行う。
 
         arc_length = []
         reflection_sin = []
 
-        # 修正(2026-08-25): 以前は range(self.bound_num) だった。
-        #   positions[0] は「初期位置」であって衝突点ではない（内点のことが多い）。
-        #   それを断面に混ぜたうえで、最後の衝突 positions[bound_num] を捨てていた。
-        #   衝突点は positions[1] 〜 positions[bound_num] なので range(1, bound_num + 1)。
-        #
-        # 修正(2026-08-25): 法線を egg_func.get_normal_vector に一元化し、内向きへ揃えた。
-        #   以前はここに外向きの勾配 ∇F ∝ (b²x, a²y) がインラインで書かれており、
-        #   内向きに統一されたスタジアム/シナイと符号規約が逆だった（この断面だけ上下反転）。
-        #   x == 0 を (0, sign(vy)) と速度で場合分けしていた枝も併せて解消している。
-        #   詳細は class/egg_func.py: get_normal_vector のコメント。
         for i in range(1, self.bound_num + 1):
 
             set_arc_angle = np.arctan2(self.positions[i][1],self.positions[i][0])
@@ -97,5 +86,51 @@ class Egg:
             reflection_sin.append(set_reflection_sin)
 
         plt.scatter(arc_length,reflection_sin,s=0.05, color=color)
-        plt.show()
+
+    def create_occupany_area(self,divide,start = 0,end = None):
+        """[start, end) の衝突を (theta, sinφ) 平面の divide x divide 格子に集計する。
+
+        格子の切り方は Stadium と同じ（横軸が原点対称なので + divide/2 でずらす）。
+        """
+        if end is None:
+            end = self.bound_num
+
+        d_reflected_sin = self.range_sin / divide
+        d_arc_length = self.range_arc / divide
+        occupancy_index = np.zeros((divide ,divide))
+
+        # TODO(未修正): Stadium / Sinai と同じ off-by-one と端のビンの問題がここにもある。
+        #   start の既定値が 0 なので positions[0](初期位置・衝突点ではない)を1個数え、
+        #   最後の衝突 positions[bound_num] を捨てている。
+        #   theta == π ちょうどだと列 index が divide になり IndexError、
+        #   sinφ == 1 ちょうどだと行 index が -1 になり最終行に黙って入る。
+        #   3形状まとめて直すべきなので、ここでは Stadium と同じ式に揃えてある。
+        for i in range(start, end):
+
+            set_arc_angle = np.arctan2(self.positions[i][1],self.positions[i][0])
+
+            n = get_normal_vector(self.positions[i] ,self.width_right ,self.width_left ,self.height)
+
+            n_norm = n / np.linalg.norm(n)
+            v_norm = self.velocities[i] / np.linalg.norm(self.velocities[i])
+
+            cross_2d = v_norm[0] * n_norm[1] - v_norm[1] * n_norm[0]
+
+            set_reflection_sin = cross_2d
+
+            reflected_sin_sign = 1 if set_reflection_sin >= 0 else 0
+            arc_angle_sign = 1 if set_arc_angle >= 0 else 0
+
+            reflected_sin_index = - int(set_reflection_sin / d_reflected_sin + reflected_sin_sign) +  int( divide / 2 )
+            arc_angle_index =  int(set_arc_angle / d_arc_length + arc_angle_sign) + int( divide / 2) - 1
+
+            occupancy_index[reflected_sin_index][arc_angle_index] += 1
+
+        return occupancy_index
+
+    def shannon_entropy_value(self,occupancy_index,n_samples):
+        """集計済みヒストグラムからシャノンエントロピー[bit]を返す（描画も print もしない）。
+        """
+        p = occupancy_index[occupancy_index > 0] / n_samples
+        return float(-np.sum(p * np.log2(p)))
 
