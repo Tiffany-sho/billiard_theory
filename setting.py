@@ -186,6 +186,18 @@ def egg_poincare_map(ax,W_r,W_l,H):
     ax.set_xlim(-np.pi , np.pi )
     ax.set_ylim(-1 , 1 )
 
+def egg_poincare_map_arc(ax,W_r,W_l,H):
+    # arc length s (origin: right vertex, counterclockwise). see docs/contracts.md 2-5
+    # egg_func lives in class/, so the caller must have class/ on sys.path.
+    from egg_func import egg_arc_range
+    half ,seam = egg_arc_range(W_r ,W_l ,H)
+    ax.set_title(f"W_r = {W_r},W_l = {W_l},H = {H}")
+    ax.axvline(x=seam,color = "red" ,linestyle="--")
+    ax.axvline(x=-seam,color = "red" ,linestyle="--")
+    ax.plot(0, 0)
+    ax.set_xlim(-half , half )
+    ax.set_ylim(-1 , 1 )
+
 def sinai_poincare_map(ax,W,H,D):
     ax.set_title(f"W = {W},H = {H},D = {D}")
     ax.plot(0, 0)

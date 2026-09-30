@@ -7,8 +7,8 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from setting import egg_set,egg_poincare_map
-from egg_func import find_intersection_func ,find_reflect_direction ,get_normal_vector
+from setting import egg_set
+from egg_func import find_intersection_func ,find_reflect_direction ,get_normal_vector ,get_arc_length ,egg_arc_range
 
 class Egg:
     def __init__(self ,position ,velocity ,W_r ,W_l ,H ,bound_num):
@@ -32,9 +32,10 @@ class Egg:
             self.positions.append(p.copy())
             self.velocities.append(v.copy())
 
-        # 横軸は弧長ではなく角度 theta = atan2(y, x) ∈ (-π, π]（docs/contracts.md §2-5）
+        # 横軸は弧長 s ∈ (-L/2, L/2]。原点は右頂点、反時計回りが正（docs/contracts.md §2-5）
+        half_arc ,_ = egg_arc_range(W_r ,W_l ,H)
         self.range_sin = 2.0
-        self.range_arc = 2 * np.pi
+        self.range_arc = 2 * half_arc
 
 
     def liner(self):
@@ -63,16 +64,15 @@ class Egg:
         # 変更(2026-09-30): 以前はここで figure を作って plt.show() していた。
         #   それだと重ね描き(main/egg/poincare_mix.py)で1本ごとに別ウィンドウになるので、
         #   Sinai / Stadium と同じく「今の ax に点を足すだけ」にした。
-        #   軸の設定(egg_poincare_map)と plt.show() は呼び出し側で行う。
+        #   軸の設定(setting.py: egg_poincare_map_arc)と plt.show() は呼び出し側で行う。
 
         arc_length = []
         reflection_sin = []
 
         for i in range(1, self.bound_num + 1):
 
-            set_arc_angle = np.arctan2(self.positions[i][1],self.positions[i][0])
+            set_arc_length = get_arc_length(self.positions[i] ,self.width_right ,self.width_left ,self.height)
 
-            # jacobian = get_jacobian(W_r,W_l,H,set_arc_angle)
             n = get_normal_vector(self.positions[i] ,self.width_right ,self.width_left ,self.height)
 
             n_norm = n / np.linalg.norm(n)
@@ -82,13 +82,13 @@ class Egg:
             
             set_reflection_sin = cross_2d 
 
-            arc_length.append(set_arc_angle)
+            arc_length.append(set_arc_length)
             reflection_sin.append(set_reflection_sin)
 
         plt.scatter(arc_length,reflection_sin,s=0.05, color=color)
 
     def create_occupany_area(self,divide,start = 0,end = None):
-        """[start, end) の衝突を (theta, sinφ) 平面の divide x divide 格子に集計する。
+        """[start, end) の衝突を (s, sinφ) 平面の divide x divide 格子に集計する。
 
         格子の切り方は Stadium と同じ（横軸が原点対称なので + divide/2 でずらす）。
         """
@@ -102,12 +102,12 @@ class Egg:
         # TODO(未修正): Stadium / Sinai と同じ off-by-one と端のビンの問題がここにもある。
         #   start の既定値が 0 なので positions[0](初期位置・衝突点ではない)を1個数え、
         #   最後の衝突 positions[bound_num] を捨てている。
-        #   theta == π ちょうどだと列 index が divide になり IndexError、
+        #   s == L/2（左頂点）ちょうどだと列 index が divide になり IndexError、
         #   sinφ == 1 ちょうどだと行 index が -1 になり最終行に黙って入る。
         #   3形状まとめて直すべきなので、ここでは Stadium と同じ式に揃えてある。
         for i in range(start, end):
 
-            set_arc_angle = np.arctan2(self.positions[i][1],self.positions[i][0])
+            set_arc_length = get_arc_length(self.positions[i] ,self.width_right ,self.width_left ,self.height)
 
             n = get_normal_vector(self.positions[i] ,self.width_right ,self.width_left ,self.height)
 
@@ -119,12 +119,12 @@ class Egg:
             set_reflection_sin = cross_2d
 
             reflected_sin_sign = 1 if set_reflection_sin >= 0 else 0
-            arc_angle_sign = 1 if set_arc_angle >= 0 else 0
+            arc_length_sign = 1 if set_arc_length >= 0 else 0
 
             reflected_sin_index = - int(set_reflection_sin / d_reflected_sin + reflected_sin_sign) +  int( divide / 2 )
-            arc_angle_index =  int(set_arc_angle / d_arc_length + arc_angle_sign) + int( divide / 2) - 1
+            arc_length_index =  int(set_arc_length / d_arc_length + arc_length_sign) + int( divide / 2) - 1
 
-            occupancy_index[reflected_sin_index][arc_angle_index] += 1
+            occupancy_index[reflected_sin_index][arc_length_index] += 1
 
         return occupancy_index
 

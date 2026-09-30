@@ -18,10 +18,6 @@ wall_height = 4.0
 position = np.array([0.3 ,0.1])
 velocity = np.array([0.02 ,0.05]) / np.sqrt(29)
 
-range_sin = 2.0
-# 横軸は角度 theta ∈ (-π, π]
-range_arc = 2 * np.pi
-
 divide = 50
 
 epoch = 50
@@ -31,10 +27,11 @@ bound_num_max = epoch * step
 fig,ax = plt.subplots()
 occupancy_rate_gragh(ax)
 
-all_area =  range_arc * range_sin
-part_area = all_area / divide ** 2
-
 billiard = Egg(position ,velocity ,wall_width_right ,wall_width_left ,wall_height ,bound_num_max)
+
+# 横軸は弧長 s ∈ (-L/2, L/2]。幅は Egg が持っている
+all_area =  billiard.range_arc * billiard.range_sin
+part_area = all_area / divide ** 2
 
 # ヒストグラムは差分更新にする（増えた step 点ぶんだけ足す）。
 occupancy_index = np.zeros((divide ,divide))

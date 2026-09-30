@@ -184,8 +184,8 @@ def test_sinai():
 def test_egg():
     W_r, W_l, H, N = 6.0, 3.0, 4.0, 500
     print("EGG      W_r=%.1f W_l=%.1f H=%.1f  N=%d" % (W_r, W_l, H, N))
-    # 卵型は弧長ではなく極角 arctan2(y, x) を断面の横軸に使っている
-    # （弧長には楕円積分が要る）。定義域は [-pi, pi]。
+    # 横軸は弧長 s。原点は右頂点、反時計回り、定義域は [-L/2, L/2]。
+    half, _ = EF.egg_arc_range(W_r, W_l, H)
     cases = [(np.array([0.3, 0.1]), np.array([0.02, 0.05]) / np.sqrt(29)),
              (np.array([-0.5, 0.4]), np.array([1.0, 0.37]))]
 
@@ -195,9 +195,65 @@ def test_egg():
             "egg#%d" % c, e.positions, e.velocities,
             residual=lambda p: egg_residual(p, W_r, W_l, H),
             normal_of=lambda p: EF.get_normal_vector(p, W_r, W_l, H),
-            arc_of=lambda p: np.arctan2(p[1], p[0]),
-            arc_range=(-np.pi, np.pi),
+            arc_of=lambda p: EF.get_arc_length(p, W_r, W_l, H),
+            arc_range=(-half, half),
             expect_inward=True)
+
+
+def simpson_arc(a, b, t, n=20000):
+    """x = a cos u, y = b sin u の u = 0..t の弧長を Simpson 則で出す（照合用）。"""
+    u = np.linspace(0.0, t, 2 * n + 1)
+    g = np.sqrt((a * np.sin(u)) ** 2 + (b * np.cos(u)) ** 2)
+    h = t / (2 * n)
+    return h / 3 * (g[0] + g[-1] + 4 * g[1:-1:2].sum() + 2 * g[2:-1:2].sum())
+
+
+def test_egg_arc_length():
+    """卵型の弧長 s（Carlson の楕円積分）を数値積分と突き合わせる。
+
+    [3] は s が範囲に入ることしか見ないので、値そのものの正しさはここで見る。
+      - 楕円弧の長さが Simpson 則と一致する（a < b / a > b / 極端な扁平率）
+      - 円（W_r = W_l = H）では s = (H/2) * 極角
+      - 境界を反時計回りに一周すると s が単調に増え、継ぎ目 x = 0 で連続
+    """
+    print("EGG ARC LENGTH  (Carlson elliptic integral vs Simpson)")
+
+    worst = 0.0
+    for a, b in [(3.0, 2.0), (2.0, 3.0), (1.5, 2.0), (2.0, 2.0),
+                 (0.1, 10.0), (10.0, 0.1)]:
+        for t in np.linspace(-np.pi / 2, np.pi / 2, 19):
+            got = EF.half_ellipse_arc(np.cos(t), np.sin(t), a, b)
+            worst = max(worst, abs(got - simpson_arc(a, b, t)) / max(a, b))
+    check("egg arc / half-ellipse arc matches Simpson", worst < 1e-10,
+          "max rel err=%.2e" % worst)
+
+    R = 2.0
+    err = max(abs(EF.get_arc_length(np.array([R * np.cos(th), R * np.sin(th)]),
+                                     2 * R, 2 * R, 2 * R) - R * th)
+              for th in np.linspace(-np.pi + 1e-3, np.pi - 1e-3, 101))
+    check("egg arc / circle gives s = r * theta", err < 1e-12,
+          "max err=%.2e" % err)
+
+    W_r, W_l, H = 6.0, 3.0, 4.0
+    half, seam = EF.egg_arc_range(W_r, W_l, H)
+    ss = []
+    for th in np.linspace(-np.pi + 1e-9, np.pi, 2001):
+        a = (W_r if np.cos(th) >= 0 else W_l) / 2
+        r = 1.0 / np.sqrt((np.cos(th) / a) ** 2 + (np.sin(th) / (H / 2)) ** 2)
+        ss.append(EF.get_arc_length(np.array([r * np.cos(th), r * np.sin(th)]),
+                                    W_r, W_l, H))
+    steps = np.diff(ss)
+    check("egg arc / s increases counterclockwise, no jump",
+          steps.min() > 0 and steps.max() < 0.05
+          and abs(ss[-1] - half) < 1e-12 and abs(ss[0] + half) < 1e-6,
+          "step in [%.2e, %.2e], s in [%.6f, %.6f], L/2=%.6f"
+          % (steps.min(), steps.max(), ss[0], ss[-1], half))
+
+    top = EF.get_arc_length(np.array([0.0, H / 2]), W_r, W_l, H)
+    bottom = EF.get_arc_length(np.array([0.0, -H / 2]), W_r, W_l, H)
+    check("egg arc / seam x = 0 sits at s = +-L_r/2",
+          abs(top - seam) < 1e-15 and abs(bottom + seam) < 1e-15,
+          "top=%.6f bottom=%.6f L_r/2=%.6f" % (top, bottom, seam))
 
 
 def test_index_range_is_collisions_only():
@@ -232,7 +288,7 @@ def main():
     print("=" * 72)
     print("billiard invariant tests")
     print("=" * 72)
-    for t in (test_stadium, test_sinai, test_egg,
+    for t in (test_stadium, test_sinai, test_egg, test_egg_arc_length,
               test_index_range_is_collisions_only):
         t()
         print("")

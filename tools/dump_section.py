@@ -16,7 +16,7 @@ simulation.html（JavaScript 版）が既存 Python と同じ数値を出して�
 このツールが使う規約（docs/contracts.md が正）:
   [D1] 法線 n は全形状で領域の内側を向く。
   [D2] 断面に載せるのは衝突点 1..N のみ。初期位置は載せない。
-  [D4] 楕円・卵型の横軸は弧長ではなく極角 arctan2(y, x)。
+  [D4] 楕円・卵型の横軸も弧長 s（右頂点が原点、反時計回り）。極角ではない。
   [D5] 角に当たった場合は来た道を戻る。
 
   sin(phi) は「入射速度」（反射前）と法線の外積で計算している。
@@ -135,9 +135,10 @@ def egg_case():
         intersect=lambda p, v: EF.find_intersection_func(p, v, W_r, W_l, H),
         reflect=lambda q, v: EF.find_reflect_direction(q, v, W_r, W_l, H),
         normal=lambda q, v: EF.get_normal_vector(q, W_r, W_l, H),
-        coord=lambda q: np.arctan2(q[1], q[0]),
+        coord=lambda q: EF.get_arc_length(q, W_r, W_l, H),
         corner=no_corner,
-        coord_range=(-np.pi, np.pi))
+        coord_range=(-EF.egg_arc_range(W_r, W_l, H)[0],
+                     EF.egg_arc_range(W_r, W_l, H)[0]))
 
 
 def ellipse_case():
@@ -151,9 +152,10 @@ def ellipse_case():
         intersect=lambda p, v: EF.find_intersection_func(p, v, W_r, W_l, H),
         reflect=lambda q, v: EF.find_reflect_direction(q, v, W_r, W_l, H),
         normal=lambda q, v: EF.get_normal_vector(q, W_r, W_l, H),
-        coord=lambda q: np.arctan2(q[1], q[0]),
+        coord=lambda q: EF.get_arc_length(q, W_r, W_l, H),
         corner=no_corner,
-        coord_range=(-np.pi, np.pi))
+        coord_range=(-EF.egg_arc_range(W_r, W_l, H)[0],
+                     EF.egg_arc_range(W_r, W_l, H)[0]))
 
 
 CASES = [stadium_case, sinai_case, rect_case, egg_case, ellipse_case]
