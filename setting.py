@@ -21,8 +21,6 @@ def squre_set(ax,W,H) :
     ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    # 高速化(2026-08-25): 直線を引くのに 100 点を並べる必要はない（端点2つで同じ図）。
-    #   以前は linspace(100) と [H/2 for _ in range(100)] を4本ぶん作っていた。
     plt.plot([-W /2 , W /2], [H /2 , H /2] , linewidth = 1,color='black')
     plt.plot([-W /2 , W /2], [-H /2 , -H /2] , linewidth = 1,color='black')
     plt.plot([W /2 , W /2], [-H /2 , H /2] , linewidth = 1,color='black')
@@ -34,11 +32,6 @@ def stadium_set(ax,W,H) :
     ax.set_xlim(-W /2 -H, W /2 +H)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    # 高速化(2026-08-25): 以前は y を linspace(-H/2, H/2, 1000000) で刻み、
-    #   x = sqrt((H/2)^2 - y^2) として半円を描いていた。
-    #   この取り方だと円弧の上下端（曲線がほぼ水平な所）で点が極端に粗くなるため、
-    #   カクつきを消すのに 100 万点も必要になっていた（配列8MB×2、描画も約0.4秒）。
-    #   角度で刻めば弧長に対して等間隔になるので、400 点で見た目は同じかむしろ滑らか。
     theta = np.linspace(-np.pi /2 , np.pi /2 ,400)
     arc_x = H /2 * np.cos(theta)
     arc_y = H /2 * np.sin(theta)
@@ -54,15 +47,11 @@ def sinai_set(ax,W,H,D) :
     ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    # 高速化(2026-08-25): 直線は端点2つで十分（stadium_set と同じ理由）。
     plt.plot([-W /2 , W /2], [H /2 , H /2] , linewidth = 1,color='black')
     plt.plot([-W /2 , W /2], [-H /2 , -H /2] , linewidth = 1,color='black')
     plt.plot([W /2 , W /2], [-H /2 , H /2] , linewidth = 1,color='black')
     plt.plot([-W /2 , -W /2], [-H /2 , H /2] , linewidth = 1,color='black')
 
-    # 高速化(2026-08-25): 障害物の円も x 刻み + sqrt をやめて角度で1周させる。
-    #   x 刻みだと左右の端（曲線が垂直な所）が粗くなるので 10000 点必要だった。
-    #   角度なら 400 点で滑らか。上下2本に分ける必要も無くなる。
     theta = np.linspace(-np.pi , np.pi ,400)
     plt.plot(D /2 * np.cos(theta) ,D /2 * np.sin(theta) , linewidth = 1,color='black')
 
@@ -72,9 +61,6 @@ def ellipse_set(ax,W,H) :
     ax.set_xlim(-W /2 -1.0, W /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    # 高速化(2026-08-25): x 刻み + sqrt をやめて角度で1周させる。
-    #   x 刻みだと左右の端（曲線が垂直な所）が粗くなるので 10000 点必要だった。
-    #   媒介変数表示なら 400 点で滑らか。上下2本に分ける必要も無くなる。
     theta = np.linspace(-np.pi ,np.pi ,400)
 
     plt.plot(W /2 * np.cos(theta) ,H /2 * np.sin(theta) ,linewidth = 1,color='black')
@@ -85,10 +71,6 @@ def egg_set(ax,W_r,W_l,H) :
     ax.set_xlim(-W_l /2 -1.0, W_r /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    # 高速化(2026-08-25): x 刻み + sqrt をやめて角度で刻む（上半分だけ作り、
-    #   下半分は既存の -y_l / -y_r の描画で対称に描く）。
-    #   x 刻みだと左右の端（曲線が垂直な所）が粗くなるので 10000 点必要だった。
-    #   媒介変数表示なら片側 200 点で滑らか。
     theta_l = np.linspace(np.pi /2 ,np.pi ,200)
     x_l = W_l /2 * np.cos(theta_l)
     y_l = H /2 * np.sin(theta_l)
@@ -120,10 +102,6 @@ def egg_set_asy(ax,W_r,W_l,H,v) :
     ax.set_xlim(-W_l /2 -1.0, W_r /2 + 1.0)
     ax.set_ylim(-H /2 -1.0, H /2 + 1.0)
 
-    # 高速化(2026-08-25): x 刻み + sqrt をやめて角度で刻む（上半分だけ作り、
-    #   下半分は既存の -y_l / -y_r の描画で対称に描く）。
-    #   x 刻みだと左右の端（曲線が垂直な所）が粗くなるので 10000 点必要だった。
-    #   媒介変数表示なら片側 200 点で滑らか。
     theta_l = np.linspace(np.pi /2 ,np.pi ,200)
     x_l = W_l /2 * np.cos(theta_l)
     y_l = H /2 * np.sin(theta_l)

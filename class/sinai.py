@@ -41,8 +41,6 @@ class Sinai:
         fig ,ax = plt.subplots()
         sinai_set(ax ,self.width ,self.height ,self.dismeter )
 
-        # 高速化(2026-08-25): 以前は for ループで1点ずつ append していた。
-        #   positions は (bound_num + 1, 2) の配列そのものなので、まとめて取り出す。
         p = np.asarray(self.positions)
         p_x = p[:, 0]
         p_y = p[:, 1]
@@ -50,10 +48,6 @@ class Sinai:
         def update(frame):
             plt.plot([p_x[frame]],[p_y[frame]] , "o",color = "black" ,ms = 3)
 
-            # 高速化(2026-08-25): 衝突と衝突の間は直線なので、端点2つで同じ図になる。
-            #   以前は linspace で 100 点に分割して描いていた（点数が50倍）。
-            #   さらに「x が変化しないなら同じ値を100個並べる」という分岐もあったが、
-            #   np.linspace(a, a, 100) は普通に動くので、もともと不要な分岐だった。
             plt.plot([p_x[frame], p_x[frame + 1]], [p_y[frame], p_y[frame + 1]],
                      color = "black" ,linewidth = 1 ,alpha=0.1)
 
@@ -69,10 +63,6 @@ class Sinai:
         arc_length = []
         reflection_sin = []
 
-        # 修正(2026-08-25): 以前は range(self.bound_num) だった。
-        #   positions[0] は「初期位置」であって衝突点ではない（内点のことが多い）。
-        #   それを断面に混ぜたうえで、最後の衝突 positions[bound_num] を捨てていた。
-        #   衝突点は positions[1] 〜 positions[bound_num] なので range(1, bound_num + 1)。
         for i in range(1, self.bound_num + 1):
 
             set_arc_length ,n= get_n_vector_arc_length(self.positions[i],self.width ,self.height ,self.dismeter )
@@ -93,12 +83,6 @@ class Sinai:
 
     def create_occupany_area(self,divide,start = 0,end = None):
         """[start, end) の衝突を (s, sinφ) 平面の divide x divide 格子に集計する。
-
-        高速化(2026-08-25): 以前は毎回 range(self.bound_num) を最初から数え直していた。
-          shannon_entropy_mix のように衝突回数を増やしながら繰り返し呼ぶ使い方では
-          同じ点を何度も数えることになり、全体の仕事量が O(N^2) になっていた。
-          区間を指定できるようにして、呼び出し側が差分だけ足せるようにした。
-          引数を省略したときの挙動は従来どおり range(0, bound_num) で変わらない。
         """
         if end is None:
             end = self.bound_num
@@ -159,11 +143,6 @@ class Sinai:
     def shannon_entropy_value(self,occupancy_index,n_samples):
         """集計済みヒストグラムからシャノンエントロピー[bit]を返す（描画も print もしない）。
 
-        高速化(2026-08-25): 以前は shannon_entropy の中で divide x divide の
-          二重 for ループを回して1セルずつ足していた。500回呼ぶと 125 万回の
-          Python ループになる。numpy でまとめて計算する。
-          0 のセルを除くのは 0 * log2(0) を避けるため（従来の continue と同じ意味）。
-
         分離した理由: 集計(create_occupany_area)・計算(ここ)・描画を分けておくと、
           衝突回数を増やしながらの繰り返しで集計だけを差分更新できる。
         """
@@ -171,14 +150,6 @@ class Sinai:
         return float(-np.sum(p * np.log2(p)))
 
     def shannon_entropy(self,divide):
-        # 注意(2026-08-25): このメソッドには未修正のバグが2つ残っている。
-        #   ・引数 divide を無視して create_occupany_area(50) を決め打ちしている
-        #   ・そのくせ下の二重ループは range(divide) を回るので、divide != 50 だと
-        #     集計と合計の範囲が食い違う（divide > 50 なら IndexError）
-        #   衝突回数を振って比べる用途では main/*/shannon_entropy_mix.py 側の
-        #   create_occupany_area + shannon_entropy_value の組み合わせを使うこと。
-        #   そちらは差分集計なので桁違いに速く、divide も正しく効く。
-
         index = self.create_occupany_area(50)
 
         d_reflected_sin = self.range_sin / divide

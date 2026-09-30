@@ -40,10 +40,6 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
     B = np.dot(velocity,point)
     C = point[0] ** 2 + point[1] ** 2 - (D / 2) ** 2
 
-    # 高速化(2026-08-25): 判別式 B^2 - A*C を1回だけ計算して使い回す。
-    #   以前はこの条件式と下の np.sqrt(...) の中で同じ式を2回計算していた。
-    #   書き方は元の ** 2 のまま。numpy の float64 では x*x と x**2 が
-    #   1 ULP ずれることがあり、書き換えると軌道のビットが変わってしまう。
     disc = B ** 2 - A * C
 
     if disc <= 0 or B >= 0.0 :
@@ -76,8 +72,6 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
 
         if valid_t:
             right_t = min(valid_t)
-            # 高速化(2026-08-25): 以前は point + right_t * velocity を
-            #   チェック用と hit 用で2回計算していたので、1回にまとめた。
             hit = point + right_t * velocity
             if (norm2(hit) - D / 2) > 1e-10:
                 print("交点未発見エラー")
@@ -87,8 +81,6 @@ def find_intersection_reversion(point ,velocity ,W ,H ,D) :
             return hit
         
 def find_reflect_direction(intersection,velocity,W,H,D) :
-    # 高速化(2026-08-25): np.linalg.norm -> norm2（ビット単位で等価。vector_func.py 参照）。
-    #   あわせて、円判定と n_norm で同じ |intersection| を2回計算していたのを1回にまとめた。
     speed = norm2(velocity)
     n_norm = norm2(intersection)
     if abs(n_norm - D / 2) < 1e-10:

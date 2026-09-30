@@ -40,12 +40,6 @@ def find_intersection_reversion(point,velocity,W, D) :
             A_right = velocity[0] ** 2 + velocity[1] ** 2 
             B_right = point[0] * velocity[0] + point[1] * velocity[1]  - W / 2 * velocity[0]
             C_right = point[0] ** 2 + point[1] **2 + W * W /4 - D * D /4 - W * point[0]
-            # 修正(2026-08-25): 以前はここが B_right * B_right、
-            #   下の np.sqrt の中が B_right ** 2 と書き分けられていた。
-            #   numpy の float64 では x*x と x**2 が 1 ULP ずれることがあり
-            #   （実際に衝突5190回目でずれる実例を確認）、
-            #   「D_right >= 0 を通ったのに sqrt には負の値が渡る」ことが起こりうる。
-            #   sqrt 側の式に合わせて ** 2 に統一する。値は sqrt 側と完全一致。
             D_right = B_right ** 2 - A_right * C_right
 
 
@@ -102,9 +96,6 @@ def find_intersection_reversion(point,velocity,W, D) :
 
 def find_reflect_direction(intersection,velocity,W) :
 
-    # 高速化(2026-08-25): この関数は cProfile 上の最大のホットスポットだった。
-    #   np.linalg.norm を1衝突あたり最大3回呼んでおり、そこが支配的だったので
-    #   ビット単位で等価な norm2 に置き換えた（norm2 の docstring 参照）。
     speed = norm2(velocity)
 
     if np.abs(intersection[0]) <= W /2 :
@@ -146,13 +137,6 @@ def get_normal_vector(intersection ,W ,H):
         else :
             center = np.array([-W /2 , 0])
 
-        # 修正(2026-08-25): 以前は n = intersection - center としていた。
-        #   これは円の中心から外を向くベクトル、つまり領域の「外向き」法線であり、
-        #   上の直線部(内向き)と向きが逆だった。
-        #   反射計算 v - 2(v·n̂)n̂ は n の符号に依らないため軌道は正しかったが、
-        #   断面の sinφ だけが円弧部で符号反転していた（|s| > W/2 の領域が上下反転）。
-        #   main/create_setting.py の stadium_create_setting も内向き(center - position)を
-        #   使っており、リポジトリ内で規約が食い違っていた。内向きに統一する。
         n = center - intersection
         n_norm = np.linalg.norm(n)
 

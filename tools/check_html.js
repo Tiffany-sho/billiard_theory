@@ -1,5 +1,5 @@
 /*
- * simulation.html の数値核をブラウザ無しで検算する（2026-08-25 追加）
+ * simulation.html の数値核をブラウザ無しで検算する
  *
  *   実行: node tools/check_html.js
  *   終了コード: 0 = 全形状一致 / 1 = 不一致あり

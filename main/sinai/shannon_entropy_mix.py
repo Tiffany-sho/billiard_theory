@@ -33,15 +33,9 @@ occupancy_rate_gragh(ax)
 all_area =  range_arc * range_sin
 part_area = all_area / divide ** 2
 
-# 高速化(2026-08-25): 以前はループの中で毎回 Sinai を作り直していた。
-#   衝突回数 100, 200, ..., 50000 の軌道はすべて最長軌道の先頭部分なので、
-#   50000 回ぶんを一度だけ計算して前から使えばよい。
-#   作り直していた頃は合計 100+200+...+50000 = 12,525,000 衝突を計算しており、
-#   必要な 50,000 衝突に対して約250倍の無駄だった。
-#   実測では、このスクリプトは最後まで走らせると約17分かかっていた。
 billiard = Sinai(position ,velocity ,wall_width ,wall_height ,sinai_circle_diameter ,bound_num_max)
 
-# ヒストグラムも同じ理由で差分更新にする。
+# ヒストグラムは差分更新にする。
 #   毎回 0 から数え直すと集計だけで合計 12,525,000 点ぶんのループになるが、
 #   増えた step 点ぶんだけ足せば合計 50,000 点で済む。
 occupancy_index = np.zeros((divide ,divide))
