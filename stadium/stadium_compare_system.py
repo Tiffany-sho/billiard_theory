@@ -8,20 +8,38 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__),'../func/stadium'))
 
-from setting import wall_width, half_circle_diameter ,stadium_set
+from setting import stadium_set ,basic_colors
 from find_intersection_reversion import find_intersection_reversion
 from find_reflect_direction import find_reflect_direction
 
+wall_width =2.0
+half_circle_diameter =2.0
+
+# 粒子の数（ここだけ変えればよい）
+particle_num =20
+
+# 全粒子で共通の初期位置
+initial_position = np.array([0.25,0.55])
+# 初速度: x成分は共通、y成分を 0.010 から 0.001 刻みでずらす
+# (10+i)/1000 と整数で割るのは、0.010+0.001*i だと 0.013000000000000001 のように末尾がずれるため
+velocity_x =0.5
+def velocity_y(i):
+    return (10 + i) / 1000
+
+# True にすると粒子ごとに basic_colors で色分けする
+use_colors =False
+
 fig ,ax = plt.subplots()
-stadium_set(ax)
+stadium_set(ax,wall_width,half_circle_diameter)
 
-position_1 = np.array([0.0,0.0])
-position_2 = np.array([0.0,0.0])
-velocity_1 = np.array([2.0 ,3.0])
-velocity_2 = np.array([2.0 ,3.001])
+positions_init = [initial_position.copy() for _ in range(particle_num)]
+velocities_init = [np.array([velocity_x ,velocity_y(i)]) for i in range(particle_num)]
 
-dot_1, = plt.plot([] ,[] , "o" , color = "black" ,ms = 3)
-dot_2, = plt.plot([] ,[] , "o" , color = "red" ,ms = 3)
+dots = []
+for i in range(particle_num):
+    color = basic_colors[i % len(basic_colors)] if use_colors else "black"
+    dot, = plt.plot([] ,[] , "o" , color = color ,ms = 3)
+    dots.append(dot)
 
 def create_ordit_dot(initial_position ,initial_velocity):
 
@@ -40,12 +58,11 @@ def create_ordit_dot(initial_position ,initial_velocity):
         positions.append(p.copy())
         velocities.append(v.copy())
 
-
     ordit_x = []
     ordit_y = []
     for i in range(len(intersections)):
 
-        norm_length = np.linalg.norm(positions[i] - intersections[i]) 
+        norm_length = np.linalg.norm(positions[i] - intersections[i])
         norm_velocity = np.linalg.norm(velocities[i])
 
 
@@ -59,20 +76,16 @@ def create_ordit_dot(initial_position ,initial_velocity):
 
     return [ordit_x ,ordit_y]
 
-ordit_1 = create_ordit_dot(position_1,velocity_1)
-ordit_2 = create_ordit_dot(position_2,velocity_2)
+ordits = [create_ordit_dot(positions_init[i] ,velocities_init[i]) for i in range(particle_num)]
 
-print(f"ordit_1 length: {len(ordit_1[0])}")
-print(f"ordit_2 length: {len(ordit_2[0])}")
-
-frame_num = min(len(ordit_1[0]),len(ordit_2[0]))
+frame_num = min(len(ordit[0]) for ordit in ordits)
 
 def update(frame):
 
-    dot_1.set_data([ordit_1[0][frame]],[ordit_1[1][frame]])
-    dot_2.set_data([ordit_2[0][frame]],[ordit_2[1][frame]])
+    for dot ,ordit in zip(dots ,ordits):
+        dot.set_data([ordit[0][frame]],[ordit[1][frame]])
 
-    return dot_1, dot_2
+    return dots
 
 
 ani = FuncAnimation(fig, update, frames=frame_num, interval=10 ,repeat=False ,blit=True)
